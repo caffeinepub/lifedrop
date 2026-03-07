@@ -1,0 +1,106 @@
+import type { Principal } from "@icp-sdk/core/principal";
+export interface Some<T> {
+    __kind__: "Some";
+    value: T;
+}
+export interface None {
+    __kind__: "None";
+}
+export type Option<T> = Some<T> | None;
+export interface BloodRequest {
+    id: bigint;
+    urgencyLevel: UrgencyLevel;
+    city: string;
+    createdAt: bigint;
+    bloodGroup: BloodGroup;
+    patientName: string;
+    contactNumber: string;
+    hospitalName: string;
+    requesterId: Principal;
+    quantityMl: bigint;
+}
+export interface User {
+    id: Principal;
+    city: string;
+    name: string;
+    createdAt: bigint;
+    role: Role;
+    email: string;
+    isVerified: boolean;
+    bloodGroup?: BloodGroup;
+    phone: string;
+}
+export interface DonorProfile {
+    userId: Principal;
+    lastDonationDate?: bigint;
+    availability: boolean;
+    bloodGroup: BloodGroup;
+    totalDonations: bigint;
+}
+export interface HospitalProfile {
+    isApproved: boolean;
+    userId: Principal;
+    address: string;
+    licenseNumber: string;
+    hospitalName: string;
+}
+export interface UserProfile {
+    city: string;
+    name: string;
+    role: Role;
+    email: string;
+    bloodGroup?: BloodGroup;
+    phone: string;
+}
+export enum BloodGroup {
+    B_Negative = "B_Negative",
+    AB_Positive = "AB_Positive",
+    O_Positive = "O_Positive",
+    A_Negative = "A_Negative",
+    B_Positive = "B_Positive",
+    AB_Negative = "AB_Negative",
+    A_Positive = "A_Positive",
+    O_Negative = "O_Negative"
+}
+export enum Role {
+    ngo = "ngo",
+    hospital = "hospital",
+    patient = "patient",
+    bloodBank = "bloodBank",
+    admin = "admin",
+    donor = "donor",
+    volunteer = "volunteer"
+}
+export enum UrgencyLevel {
+    low = "low",
+    high = "high",
+    critical = "critical",
+    medium = "medium"
+}
+export enum UserRole {
+    admin = "admin",
+    user = "user",
+    guest = "guest"
+}
+export interface backendInterface {
+    acceptBloodRequest(requestId: bigint): Promise<boolean>;
+    approveHospital(hospitalId: Principal): Promise<boolean>;
+    assignCallerUserRole(user: Principal, role: UserRole): Promise<void>;
+    completeBloodRequest(requestId: bigint): Promise<boolean>;
+    createBloodRequest(patientName: string, bloodGroup: BloodGroup, quantityMl: bigint, hospitalName: string, city: string, urgency: UrgencyLevel, contact: string): Promise<bigint>;
+    getAllHospitals(): Promise<Array<HospitalProfile>>;
+    getAllUsers(): Promise<Array<User>>;
+    getBloodRequests(): Promise<Array<BloodRequest>>;
+    getCallerUserProfile(): Promise<UserProfile | null>;
+    getCallerUserRole(): Promise<UserRole>;
+    getDonorProfile(userId: Principal): Promise<DonorProfile | null>;
+    getUser(userId: Principal): Promise<User>;
+    getUserProfile(user: Principal): Promise<UserProfile | null>;
+    initSystem(): Promise<void>;
+    isCallerAdmin(): Promise<boolean>;
+    registerUser(name: string, email: string, phone: string, role: Role, city: string, bloodGroup: BloodGroup | null): Promise<Principal>;
+    saveCallerUserProfile(profile: UserProfile): Promise<void>;
+    searchDonors(bloodGroup: BloodGroup | null, city: string | null, availableOnly: boolean): Promise<Array<DonorProfile>>;
+    updateDonorAvailability(available: boolean): Promise<boolean>;
+    updateUser(user: User): Promise<void>;
+}

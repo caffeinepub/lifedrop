@@ -1,0 +1,413 @@
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Calendar, Globe, Loader2, Plus, Users } from "lucide-react";
+import { useState } from "react";
+import { toast } from "sonner";
+import { useSearchDonors } from "../../hooks/useQueries";
+
+type Camp = {
+  id: string;
+  name: string;
+  location: string;
+  date: string;
+  expectedDonors: number;
+  organizer: string;
+  contact: string;
+  status: "upcoming" | "active" | "completed";
+};
+
+const statusColors = {
+  upcoming: {
+    label: "Upcoming",
+    color: "oklch(0.65 0.18 240)",
+    bg: "oklch(0.65 0.18 240 / 0.1)",
+  },
+  active: {
+    label: "Active",
+    color: "oklch(0.65 0.2 140)",
+    bg: "oklch(0.65 0.2 140 / 0.1)",
+  },
+  completed: {
+    label: "Completed",
+    color: "oklch(0.6 0.1 20)",
+    bg: "oklch(0.6 0.1 20 / 0.1)",
+  },
+};
+
+const initialCamps: Camp[] = [
+  {
+    id: "CAMP-001",
+    name: "Chennai Blood Drive",
+    location: "Anna Nagar Community Hall",
+    date: "2026-03-20",
+    expectedDonors: 100,
+    organizer: "Red Cross Chennai",
+    contact: "+91 44 1234 5678",
+    status: "upcoming",
+  },
+  {
+    id: "CAMP-002",
+    name: "IIT Madras Donation Day",
+    location: "IIT Madras Main Gate",
+    date: "2026-03-10",
+    expectedDonors: 200,
+    organizer: "IIT Student Council",
+    contact: "+91 44 9876 5432",
+    status: "active",
+  },
+  {
+    id: "CAMP-003",
+    name: "Pongal Donation Drive",
+    location: "T Nagar",
+    date: "2026-01-15",
+    expectedDonors: 150,
+    organizer: "NGO Alliance",
+    contact: "+91 44 5678 1234",
+    status: "completed",
+  },
+];
+
+export function NGODashboard() {
+  const [camps, setCamps] = useState<Camp[]>(initialCamps);
+  const [isCreating, setIsCreating] = useState(false);
+  const [form, setForm] = useState({
+    name: "",
+    location: "",
+    date: "",
+    expectedDonors: "",
+    organizer: "",
+    contact: "",
+  });
+  const [showForm, setShowForm] = useState(false);
+
+  // Fetch volunteers
+  const { data: volunteers, isLoading: loadingVolunteers } = useSearchDonors(
+    null,
+    null,
+    true,
+    true,
+  );
+
+  const handleCreate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsCreating(true);
+    await new Promise((r) => setTimeout(r, 500));
+    const today = new Date().toISOString().split("T")[0];
+    const camp: Camp = {
+      id: `CAMP-${String(camps.length + 1).padStart(3, "0")}`,
+      name: form.name,
+      location: form.location,
+      date: form.date,
+      expectedDonors: Number.parseInt(form.expectedDonors),
+      organizer: form.organizer,
+      contact: form.contact,
+      status: form.date >= today ? "upcoming" : "completed",
+    };
+    setCamps((p) => [camp, ...p]);
+    setForm({
+      name: "",
+      location: "",
+      date: "",
+      expectedDonors: "",
+      organizer: "",
+      contact: "",
+    });
+    setShowForm(false);
+    setIsCreating(false);
+    toast.success("Blood donation camp created!");
+  };
+
+  return (
+    <main className="container mx-auto px-4 py-8">
+      <h1 className="font-display text-3xl font-black mb-2">
+        NGO <span style={{ color: "oklch(var(--neon-red))" }}>Dashboard</span>
+      </h1>
+      <p className="text-muted-foreground mb-8">
+        Manage donation camps and volunteers
+      </p>
+
+      {/* Stats */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+        {[
+          { label: "Total Camps", value: camps.length },
+          {
+            label: "Active Camps",
+            value: camps.filter((c) => c.status === "active").length,
+          },
+          {
+            label: "Total Donors Expected",
+            value: camps.reduce((s, c) => s + c.expectedDonors, 0),
+          },
+          { label: "Volunteers Available", value: volunteers?.length ?? "..." },
+        ].map((s) => (
+          <div key={s.label} className="rounded-xl card-dark p-4 text-center">
+            <div
+              className="font-display text-2xl font-black"
+              style={{ color: "oklch(var(--neon-red))" }}
+            >
+              {s.value}
+            </div>
+            <div className="text-xs text-muted-foreground mt-1">{s.label}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Create Camp Button */}
+      <div className="flex justify-between items-center mb-4">
+        <h2 className="font-semibold flex items-center gap-2">
+          <Calendar
+            className="h-4 w-4"
+            style={{ color: "oklch(var(--neon-red))" }}
+          />
+          Donation Camps
+        </h2>
+        <Button
+          size="sm"
+          onClick={() => setShowForm(!showForm)}
+          data-ocid="ngo.create_camp.button"
+          style={{ backgroundColor: "oklch(var(--neon-red))", color: "white" }}
+        >
+          <Plus className="h-4 w-4 mr-1" />
+          New Camp
+        </Button>
+      </div>
+
+      {/* Camp Form */}
+      {showForm && (
+        <form
+          onSubmit={handleCreate}
+          className="rounded-xl card-dark p-5 mb-6 space-y-4 animate-slide-in-up"
+        >
+          <h3 className="font-semibold">Create New Camp</h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <Label>Camp Name *</Label>
+              <Input
+                placeholder="City Blood Drive"
+                value={form.name}
+                onChange={(e) =>
+                  setForm((p) => ({ ...p, name: e.target.value }))
+                }
+                className="bg-secondary border-border"
+                data-ocid="ngo.camp_name.input"
+                required
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Location *</Label>
+              <Input
+                placeholder="Community Hall, Anna Nagar"
+                value={form.location}
+                onChange={(e) =>
+                  setForm((p) => ({ ...p, location: e.target.value }))
+                }
+                className="bg-secondary border-border"
+                data-ocid="ngo.location.input"
+                required
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Date *</Label>
+              <Input
+                type="date"
+                value={form.date}
+                onChange={(e) =>
+                  setForm((p) => ({ ...p, date: e.target.value }))
+                }
+                className="bg-secondary border-border"
+                data-ocid="ngo.date.input"
+                required
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Expected Donors *</Label>
+              <Input
+                type="number"
+                placeholder="100"
+                value={form.expectedDonors}
+                onChange={(e) =>
+                  setForm((p) => ({ ...p, expectedDonors: e.target.value }))
+                }
+                className="bg-secondary border-border"
+                data-ocid="ngo.expected_donors.input"
+                required
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Organizer *</Label>
+              <Input
+                placeholder="Red Cross Chapter"
+                value={form.organizer}
+                onChange={(e) =>
+                  setForm((p) => ({ ...p, organizer: e.target.value }))
+                }
+                className="bg-secondary border-border"
+                data-ocid="ngo.organizer.input"
+                required
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Contact *</Label>
+              <Input
+                type="tel"
+                placeholder="+91 98765 43210"
+                value={form.contact}
+                onChange={(e) =>
+                  setForm((p) => ({ ...p, contact: e.target.value }))
+                }
+                className="bg-secondary border-border"
+                data-ocid="ngo.contact.input"
+                required
+              />
+            </div>
+          </div>
+          <div className="flex gap-3">
+            <Button
+              type="submit"
+              className="flex-1"
+              disabled={isCreating}
+              data-ocid="ngo.create_camp.submit_button"
+              style={{
+                backgroundColor: "oklch(var(--neon-red))",
+                color: "white",
+              }}
+            >
+              {isCreating ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Creating...
+                </>
+              ) : (
+                "Create Camp"
+              )}
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setShowForm(false)}
+              data-ocid="ngo.create_camp.cancel_button"
+            >
+              Cancel
+            </Button>
+          </div>
+        </form>
+      )}
+
+      {/* Camps List */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-10">
+        {camps.map((camp, i) => {
+          const sc = statusColors[camp.status];
+          return (
+            <div
+              key={camp.id}
+              className="rounded-xl card-dark p-5"
+              data-ocid={`ngo.camp.item.${i + 1}`}
+            >
+              <div className="flex items-start justify-between mb-3">
+                <h3 className="font-semibold text-sm">{camp.name}</h3>
+                <span
+                  className="text-xs px-2 py-0.5 rounded-full font-medium flex-shrink-0"
+                  style={{
+                    backgroundColor: sc.bg,
+                    color: sc.color,
+                    border: `1px solid ${sc.color.replace(")", " / 0.3)")}`,
+                  }}
+                >
+                  {sc.label}
+                </span>
+              </div>
+              <div className="space-y-1.5 text-sm text-muted-foreground">
+                <div className="flex items-center gap-2">
+                  <Globe className="h-3.5 w-3.5 flex-shrink-0" />
+                  <span className="truncate">{camp.location}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Calendar className="h-3.5 w-3.5 flex-shrink-0" />
+                  <span>{camp.date}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Users className="h-3.5 w-3.5 flex-shrink-0" />
+                  <span>{camp.expectedDonors} expected donors</span>
+                </div>
+              </div>
+              <div
+                className="mt-3 pt-3 border-t text-xs text-muted-foreground font-mono"
+                style={{ borderColor: "oklch(var(--border))" }}
+              >
+                {camp.id}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Volunteers Section */}
+      <div>
+        <h2 className="font-semibold mb-4 flex items-center gap-2">
+          <Users
+            className="h-4 w-4"
+            style={{ color: "oklch(var(--neon-red))" }}
+          />
+          Available Volunteers
+        </h2>
+        {loadingVolunteers ? (
+          <div
+            className="p-8 text-center"
+            data-ocid="ngo.volunteers.loading_state"
+          >
+            <Loader2
+              className="h-6 w-6 animate-spin mx-auto"
+              style={{ color: "oklch(var(--neon-red))" }}
+            />
+          </div>
+        ) : volunteers && volunteers.length > 0 ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+            {volunteers.slice(0, 6).map((v, i) => (
+              <div
+                key={v.userId.toString()}
+                data-ocid={`ngo.volunteer.item.${i + 1}`}
+                className="rounded-lg card-dark p-4 flex items-center gap-3"
+              >
+                <div
+                  className="w-9 h-9 rounded-lg flex items-center justify-center font-bold text-xs flex-shrink-0"
+                  style={{
+                    backgroundColor: "oklch(var(--neon-red) / 0.12)",
+                    color: "oklch(var(--neon-red))",
+                  }}
+                >
+                  {v.bloodGroup
+                    .toString()
+                    .replace("_", "")
+                    .replace("Positive", "+")
+                    .replace("Negative", "−")}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-mono text-muted-foreground truncate">
+                    {v.userId.toString().slice(0, 12)}...
+                  </div>
+                  <div
+                    className="text-xs"
+                    style={{ color: "oklch(0.65 0.2 140)" }}
+                  >
+                    {v.availability ? "Available" : "Unavailable"}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div
+            className="rounded-xl card-dark p-8 text-center"
+            data-ocid="ngo.volunteers.empty_state"
+          >
+            <p className="text-muted-foreground text-sm">
+              No volunteers found yet.
+            </p>
+          </div>
+        )}
+      </div>
+    </main>
+  );
+}

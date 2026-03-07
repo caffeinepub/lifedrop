@@ -1,0 +1,209 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ─── Font faces ─────────────────────────────────────────── */
+@font-face {
+  font-family: "Bricolage Grotesque";
+  src: url("/assets/fonts/BricolageGrotesque[opsz,wdth,wght].woff2") format("woff2");
+  font-weight: 100 900;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Outfit";
+  src: url("/assets/fonts/Outfit[wght].woff2") format("woff2");
+  font-weight: 100 900;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Geist Mono";
+  src: url("/assets/fonts/GeistMono[wght].woff2") format("woff2");
+  font-weight: 100 900;
+  font-display: swap;
+}
+
+/* ─── LIFEDROP Design Tokens ─────────────────────────────── */
+/* OKLCH values: L C H (no oklch() wrapper) */
+
+@layer base {
+  :root {
+    --radius: 0.75rem;
+
+    /* LIFEDROP Dark Theme - neon red on near-black */
+    --background: 0.085 0 0;
+    --foreground: 0.95 0.01 20;
+
+    --card: 0.11 0.005 20;
+    --card-foreground: 0.95 0.01 20;
+
+    --popover: 0.13 0.005 20;
+    --popover-foreground: 0.95 0.01 20;
+
+    /* Primary = vivid crimson/red */
+    --primary: 0.58 0.24 25;
+    --primary-foreground: 0.98 0 0;
+
+    --secondary: 0.16 0.008 20;
+    --secondary-foreground: 0.85 0.01 20;
+
+    --muted: 0.15 0.006 20;
+    --muted-foreground: 0.55 0.01 20;
+
+    /* Accent = slightly brighter red */
+    --accent: 0.65 0.22 25;
+    --accent-foreground: 0.98 0 0;
+
+    --destructive: 0.58 0.24 25;
+    --destructive-foreground: 0.98 0 0;
+
+    --border: 0.22 0.01 20;
+    --input: 0.18 0.008 20;
+    --ring: 0.58 0.24 25;
+
+    /* Chart colors */
+    --chart-1: 0.58 0.24 25;
+    --chart-2: 0.55 0.2 30;
+    --chart-3: 0.62 0.18 15;
+    --chart-4: 0.50 0.16 35;
+    --chart-5: 0.45 0.14 20;
+
+    /* Sidebar */
+    --sidebar: 0.10 0.005 20;
+    --sidebar-foreground: 0.95 0.01 20;
+    --sidebar-primary: 0.58 0.24 25;
+    --sidebar-primary-foreground: 0.98 0 0;
+    --sidebar-accent: 0.16 0.008 20;
+    --sidebar-accent-foreground: 0.85 0.01 20;
+    --sidebar-border: 0.22 0.01 20;
+    --sidebar-ring: 0.58 0.24 25;
+
+    /* Custom LIFEDROP tokens */
+    --neon-red: 0.62 0.26 25;
+    --neon-red-dim: 0.52 0.22 25;
+    --dark-surface: 0.10 0.005 20;
+    --dark-surface-hover: 0.14 0.007 20;
+    --glow-red: 0 0% 15% / 0.6;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  html {
+    color-scheme: dark;
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-family: "Outfit", sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* Scrollbar styling */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: oklch(var(--background));
+  }
+  ::-webkit-scrollbar-thumb {
+    background: oklch(var(--border));
+    border-radius: 3px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: oklch(var(--neon-red));
+  }
+}
+
+/* ─── Custom utilities ───────────────────────────────────── */
+@layer utilities {
+  .neon-glow {
+    box-shadow: 0 0 20px oklch(var(--neon-red) / 0.4), 0 0 40px oklch(var(--neon-red) / 0.2);
+  }
+
+  .neon-glow-sm {
+    box-shadow: 0 0 10px oklch(var(--neon-red) / 0.3), 0 0 20px oklch(var(--neon-red) / 0.15);
+  }
+
+  .neon-text {
+    text-shadow: 0 0 10px oklch(var(--neon-red) / 0.8), 0 0 20px oklch(var(--neon-red) / 0.4);
+  }
+
+  .glass-dark {
+    background: oklch(var(--card) / 0.8);
+    backdrop-filter: blur(12px);
+    border: 1px solid oklch(var(--border) / 0.5);
+  }
+
+  .card-dark {
+    background: oklch(var(--card));
+    border: 1px solid oklch(var(--border));
+  }
+}
+
+/* ─── Animations ─────────────────────────────────────────── */
+@keyframes pulse-glow {
+  0%, 100% {
+    box-shadow: 0 0 15px oklch(var(--neon-red) / 0.4), 0 0 30px oklch(var(--neon-red) / 0.2);
+  }
+  50% {
+    box-shadow: 0 0 25px oklch(var(--neon-red) / 0.7), 0 0 50px oklch(var(--neon-red) / 0.4);
+  }
+}
+
+@keyframes blood-drop {
+  0% { transform: translateY(-10px) scale(0.95); opacity: 0.7; }
+  50% { transform: translateY(5px) scale(1.05); opacity: 1; }
+  100% { transform: translateY(-10px) scale(0.95); opacity: 0.7; }
+}
+
+@keyframes heartbeat {
+  0%, 100% { transform: scale(1); }
+  14% { transform: scale(1.15); }
+  28% { transform: scale(1); }
+  42% { transform: scale(1.1); }
+  70% { transform: scale(1); }
+}
+
+@keyframes critical-pulse {
+  0%, 100% { opacity: 1; background-color: oklch(0.58 0.24 25); }
+  50% { opacity: 0.7; background-color: oklch(0.48 0.26 25); }
+}
+
+@keyframes slide-in-up {
+  from { transform: translateY(20px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.animate-pulse-glow {
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+.animate-blood-drop {
+  animation: blood-drop 3s ease-in-out infinite;
+}
+
+.animate-heartbeat {
+  animation: heartbeat 1.5s ease-in-out infinite;
+}
+
+.animate-critical {
+  animation: critical-pulse 1s ease-in-out infinite;
+}
+
+.animate-slide-in-up {
+  animation: slide-in-up 0.4s ease-out forwards;
+}
+
+.animate-fade-in {
+  animation: fade-in 0.3s ease-out forwards;
+}
