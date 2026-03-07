@@ -15,19 +15,20 @@ import {
   Users,
   Zap,
 } from "lucide-react";
-import { useEffect, useState } from "react";
-import { getRegisteredUsers, useApp } from "../contexts/AppContext";
+import { useMemo } from "react";
+import { useApp } from "../contexts/AppContext";
 import { useActor } from "../hooks/useActor";
+import { useAllDonors, useTotalUsers } from "../hooks/useQueries";
 
-const bloodGroupStats = [
-  { group: "A+", pct: 0 },
-  { group: "A−", pct: 0 },
-  { group: "B+", pct: 0 },
-  { group: "B−", pct: 0 },
-  { group: "AB+", pct: 0 },
-  { group: "AB−", pct: 0 },
-  { group: "O+", pct: 0 },
-  { group: "O−", pct: 0 },
+const bloodGroupKeys = [
+  { key: "A_Positive", label: "A+" },
+  { key: "A_Negative", label: "A−" },
+  { key: "B_Positive", label: "B+" },
+  { key: "B_Negative", label: "B−" },
+  { key: "AB_Positive", label: "AB+" },
+  { key: "AB_Negative", label: "AB−" },
+  { key: "O_Positive", label: "O+" },
+  { key: "O_Negative", label: "O−" },
 ];
 
 function useStats() {
@@ -84,25 +85,14 @@ const howItWorksSteps = [
 export function HomePage() {
   const { t } = useApp();
   const { data: backendStats } = useStats();
+  const { data: allDonors } = useAllDonors();
+  const { data: totalUsersRaw } = useTotalUsers();
 
-  // Track registered users count from localStorage (updates when someone registers)
-  const [registeredCount, setRegisteredCount] = useState(
-    () => getRegisteredUsers().length,
-  );
-  const [donorCount, setDonorCount] = useState(
-    () => getRegisteredUsers().filter((u) => u.role === "donor").length,
-  );
-
-  useEffect(() => {
-    const refresh = () => {
-      const users = getRegisteredUsers();
-      setRegisteredCount(users.length);
-      setDonorCount(users.filter((u) => u.role === "donor").length);
-    };
-    window.addEventListener("lifedrop_user_registered", refresh);
-    return () =>
-      window.removeEventListener("lifedrop_user_registered", refresh);
-  }, []);
+  // Real donor count from backend
+  const donorCount = allDonors?.length ?? 0;
+  // Real total users from backend (bigint → number)
+  const totalUsersCount =
+    totalUsersRaw !== undefined ? Number(totalUsersRaw) : 0;
 
   const stats = [
     {
@@ -122,10 +112,31 @@ export function HomePage() {
     },
     {
       label: "Total Users",
-      value: String(registeredCount),
+      value: String(totalUsersCount),
       icon: <Globe className="h-5 w-5" />,
     },
   ];
+
+  // Real per-blood-group counts from backend
+  const bloodGroupCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const bg of bloodGroupKeys) {
+      counts[bg.key] = 0;
+    }
+    if (allDonors) {
+      for (const donor of allDonors) {
+        const key = String(donor.bloodGroup);
+        if (key in counts) {
+          counts[key]++;
+        }
+      }
+    }
+    return counts;
+  }, [allDonors]);
+
+  const maxBloodGroupCount = useMemo(() => {
+    return Math.max(...Object.values(bloodGroupCounts), 1);
+  }, [bloodGroupCounts]);
 
   return (
     <main>
@@ -202,7 +213,7 @@ export function HomePage() {
               <Link to="/request" data-ocid="hero.emergency.primary_button">
                 <Button
                   size="lg"
-                  className="w-full sm:w-auto text-base font-bold px-8 py-6 animate-pulse-glow"
+                  className="w-full sm:w-auto text-base font-bold px-8 py-6 animate-glow-border"
                   style={{
                     backgroundColor: "oklch(var(--neon-red))",
                     color: "white",
@@ -248,24 +259,37 @@ export function HomePage() {
         />
       </section>
 
+      {/* ─── Glowing divider ─────────────────────────────────── */}
+      <div
+        className="h-px w-full"
+        style={{
+          background:
+            "linear-gradient(90deg, transparent, oklch(var(--neon-red) / 0.4) 30%, oklch(var(--neon-red) / 0.6) 50%, oklch(var(--neon-red) / 0.4) 70%, transparent)",
+          boxShadow: "0 0 10px oklch(var(--neon-red) / 0.3)",
+        }}
+      />
+
       {/* ─── Stats Strip ─────────────────────────────────────── */}
-      <section className="border-y border-border bg-card/50">
+      <section className="border-b border-border bg-card/30">
         <div className="container mx-auto px-4 py-8">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {stats.map((stat) => (
-              <div key={stat.label} className="text-center">
+              <div
+                key={stat.label}
+                className="card-glow rounded-xl p-5 text-center animate-pulse-glow"
+              >
                 <div
-                  className="inline-flex items-center justify-center w-10 h-10 rounded-full mb-2"
-                  style={{ backgroundColor: "oklch(var(--neon-red) / 0.1)" }}
+                  className="inline-flex items-center justify-center w-10 h-10 rounded-full mb-3"
+                  style={{ backgroundColor: "oklch(var(--neon-red) / 0.12)" }}
                 >
                   <span style={{ color: "oklch(var(--neon-red))" }}>
                     {stat.icon}
                   </span>
                 </div>
-                <div className="font-display text-2xl md:text-3xl font-black text-foreground">
+                <div className="font-display text-3xl md:text-4xl font-black text-foreground transition-all duration-500">
                   {stat.value}
                 </div>
-                <div className="text-xs text-muted-foreground mt-1">
+                <div className="text-xs text-muted-foreground mt-1.5">
                   {stat.label}
                 </div>
               </div>
@@ -351,7 +375,7 @@ export function HomePage() {
         </div>
       </section>
 
-      {/* ─── Blood Group Strip ───────────────────────────────── */}
+      {/* ─── Blood Group Strip (Real Data) ───────────────────── */}
       <section className="container mx-auto px-4 py-20">
         <div className="text-center mb-12">
           <h2 className="font-display text-3xl md:text-4xl font-black mb-3">
@@ -362,37 +386,61 @@ export function HomePage() {
           </p>
         </div>
         <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-4">
-          {bloodGroupStats.map((bg) => (
-            <div
-              key={bg.group}
-              className="p-4 rounded-xl card-dark hover:border-primary/30 transition-all group"
-            >
+          {bloodGroupKeys.map((bg) => {
+            const count = bloodGroupCounts[bg.key] ?? 0;
+            const barWidth = (count / maxBloodGroupCount) * 100;
+            const barColor =
+              count === 0
+                ? "oklch(0.35 0 0)"
+                : count < 3
+                  ? "oklch(0.65 0.22 40)"
+                  : count < 7
+                    ? "oklch(0.75 0.15 90)"
+                    : "oklch(0.62 0.22 140)";
+
+            const glowStyle =
+              count === 0
+                ? {}
+                : count < 3
+                  ? {
+                      boxShadow:
+                        "0 0 10px oklch(0.75 0.18 70 / 0.2), 0 0 20px oklch(0.75 0.18 70 / 0.1)",
+                    }
+                  : {
+                      boxShadow:
+                        "0 0 12px oklch(0.65 0.2 140 / 0.25), 0 0 24px oklch(0.65 0.2 140 / 0.12)",
+                    };
+
+            return (
               <div
-                className="font-display text-2xl font-black text-center mb-3"
-                style={{ color: "oklch(var(--neon-red))" }}
+                key={bg.key}
+                className="p-4 rounded-xl card-dark hover:border-primary/30 transition-all group"
+                style={glowStyle}
               >
-                {bg.group}
-              </div>
-              {/* Mini bar */}
-              <div className="h-1.5 rounded-full bg-muted overflow-hidden mb-2">
                 <div
-                  className="h-full rounded-full transition-all group-hover:opacity-90"
-                  style={{
-                    width: `${bg.pct}%`,
-                    backgroundColor:
-                      bg.pct < 30
-                        ? "oklch(0.65 0.22 40)"
-                        : bg.pct < 60
-                          ? "oklch(0.75 0.15 90)"
-                          : "oklch(0.62 0.22 140)",
-                  }}
-                />
+                  className="font-display text-2xl font-black text-center mb-3"
+                  style={{ color: "oklch(var(--neon-red))" }}
+                >
+                  {bg.label}
+                </div>
+                {/* Mini bar */}
+                <div className="h-1.5 rounded-full bg-muted overflow-hidden mb-2">
+                  <div
+                    className="h-full rounded-full transition-all duration-700 group-hover:opacity-90"
+                    style={{
+                      width: `${barWidth}%`,
+                      backgroundColor: barColor,
+                    }}
+                  />
+                </div>
+                <div className="text-xs text-muted-foreground text-center">
+                  {count === 0
+                    ? "No donors"
+                    : `${count} donor${count !== 1 ? "s" : ""}`}
+                </div>
               </div>
-              <div className="text-xs text-muted-foreground text-center">
-                {donorCount} donors
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </section>
 
@@ -449,7 +497,7 @@ export function HomePage() {
                 },
                 {
                   label: "Registered Users",
-                  value: String(registeredCount),
+                  value: String(totalUsersCount),
                   icon: "🙌",
                 },
                 {
@@ -468,7 +516,7 @@ export function HomePage() {
                   className="p-5 rounded-xl card-dark text-center"
                 >
                   <div className="text-3xl mb-2">{item.icon}</div>
-                  <div className="font-display text-xl font-bold text-foreground">
+                  <div className="font-display text-xl font-bold text-foreground transition-all duration-500">
                     {item.value}
                   </div>
                   <div className="text-xs text-muted-foreground">
@@ -504,8 +552,8 @@ export function HomePage() {
               Ready to save a life?
             </h2>
             <p className="text-muted-foreground text-lg mb-8 max-w-lg mx-auto">
-              Join thousands of donors already on LIFEDROP. Your blood can save
-              up to 3 lives.
+              Join donors already on LIFEDROP. Your blood can save up to 3
+              lives.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Link to="/register" data-ocid="cta.register.primary_button">

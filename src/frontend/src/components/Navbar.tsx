@@ -39,7 +39,10 @@ export function Navbar() {
   ];
 
   return (
-    <header className="sticky top-0 z-50 border-b border-border/50 bg-background/80 backdrop-blur-md">
+    <header
+      className="sticky top-0 z-50 border-b border-border/50 bg-background/80 backdrop-blur-md"
+      style={{ boxShadow: "0 1px 20px oklch(var(--neon-red) / 0.1)" }}
+    >
       <nav className="container mx-auto flex h-16 items-center justify-between px-4">
         {/* Logo */}
         <Link

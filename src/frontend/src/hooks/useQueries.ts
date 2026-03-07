@@ -115,10 +115,11 @@ export function useSearchDonors(
   city: string | null,
   availableOnly: boolean,
   enabled = true,
+  searchKey = 0,
 ) {
   const { actor, isFetching } = useActor();
   return useQuery({
-    queryKey: ["donors", bloodGroup, city, availableOnly],
+    queryKey: ["donors", bloodGroup, city, availableOnly, searchKey],
     queryFn: async () => {
       if (!actor) return [];
       try {
@@ -193,5 +194,123 @@ export function useApproveHospital() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["allHospitals"] });
     },
+  });
+}
+
+// ─── All Donors (public, for stats & leaderboard) ────────────
+export function useAllDonors() {
+  const { actor, isFetching } = useActor();
+  return useQuery({
+    queryKey: ["allDonors"],
+    queryFn: async () => {
+      if (!actor) return [];
+      try {
+        return await actor.searchDonors(null, null, false);
+      } catch {
+        return [];
+      }
+    },
+    enabled: !!actor && !isFetching,
+    refetchInterval: 30000,
+  });
+}
+
+// ─── Caller Donor Profile ─────────────────────────────────────
+export function useCallerDonorProfile() {
+  const { actor, isFetching } = useActor();
+  return useQuery({
+    queryKey: ["callerDonorProfile"],
+    queryFn: async () => {
+      if (!actor) return null;
+      try {
+        return await actor.getCallerDonorProfile();
+      } catch {
+        return null;
+      }
+    },
+    enabled: !!actor && !isFetching,
+  });
+}
+
+// ─── Public User List (no auth required) ─────────────────────
+export function usePublicUserList() {
+  const { actor, isFetching } = useActor();
+  return useQuery({
+    queryKey: ["publicUserList"],
+    queryFn: async () => {
+      if (!actor) return [];
+      try {
+        return await actor.getPublicUserList();
+      } catch {
+        return [];
+      }
+    },
+    enabled: !!actor && !isFetching,
+    refetchInterval: 15000,
+  });
+}
+
+// ─── Total Users Count (no auth required) ────────────────────
+export function useTotalUsers() {
+  const { actor, isFetching } = useActor();
+  return useQuery({
+    queryKey: ["totalUsers"],
+    queryFn: async () => {
+      if (!actor) return 0n;
+      try {
+        return await actor.getTotalUsers();
+      } catch {
+        return 0n;
+      }
+    },
+    enabled: !!actor && !isFetching,
+    refetchInterval: 15000,
+  });
+}
+
+// ─── Public Donor Search (with name, phone, city) ─────────────
+export function useSearchDonorsPublic(
+  bloodGroup: BloodGroup | null,
+  city: string | null,
+  name: string | null,
+  availableOnly: boolean,
+  enabled = true,
+  searchKey = 0,
+) {
+  const { actor, isFetching } = useActor();
+  return useQuery({
+    queryKey: [
+      "donorsPublic",
+      bloodGroup,
+      city,
+      name,
+      availableOnly,
+      searchKey,
+    ],
+    queryFn: async () => {
+      if (!actor) return [];
+      try {
+        const results = await actor.searchDonorsPublic(
+          bloodGroup,
+          city,
+          name,
+          availableOnly,
+        );
+        // Ensure totalDonations is always a number/bigint to prevent display issues
+        return results.map((d) => ({
+          ...d,
+          totalDonations: BigInt(d.totalDonations ?? 0),
+          phone: d.phone ?? "",
+          name: d.name ?? "",
+          city: d.city ?? "",
+        }));
+      } catch (err) {
+        console.error("searchDonorsPublic error:", err);
+        return [];
+      }
+    },
+    enabled: !!actor && !isFetching && enabled,
+    staleTime: 0,
+    gcTime: 0,
   });
 }

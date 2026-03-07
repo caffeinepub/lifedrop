@@ -37,12 +37,28 @@ export interface DonorProfile {
   'bloodGroup' : BloodGroup,
   'totalDonations' : bigint,
 }
+export interface DonorPublicInfo {
+  'city' : string,
+  'userId' : Principal,
+  'name' : string,
+  'lastDonationDate' : [] | [bigint],
+  'availability' : boolean,
+  'bloodGroup' : BloodGroup,
+  'totalDonations' : bigint,
+  'phone' : string,
+}
 export interface HospitalProfile {
   'isApproved' : boolean,
   'userId' : Principal,
   'address' : string,
   'licenseNumber' : string,
   'hospitalName' : string,
+}
+export interface PublicUserEntry {
+  'city' : string,
+  'name' : string,
+  'role' : Role,
+  'bloodGroup' : [] | [BloodGroup],
 }
 export type Role = { 'ngo' : null } |
   { 'hospital' : null } |
@@ -90,10 +106,12 @@ export interface _SERVICE {
   'getAllHospitals' : ActorMethod<[], Array<HospitalProfile>>,
   'getAllUsers' : ActorMethod<[], Array<User>>,
   'getBloodRequests' : ActorMethod<[], Array<BloodRequest>>,
+  'getCallerDonorProfile' : ActorMethod<[], [] | [DonorProfile]>,
   'getCallerUserProfile' : ActorMethod<[], [] | [UserProfile]>,
   'getCallerUserRole' : ActorMethod<[], UserRole>,
   'getDonorProfile' : ActorMethod<[Principal], [] | [DonorProfile]>,
-  'getUser' : ActorMethod<[Principal], User>,
+  'getPublicUserList' : ActorMethod<[], Array<PublicUserEntry>>,
+  'getTotalUsers' : ActorMethod<[], bigint>,
   'getUserProfile' : ActorMethod<[Principal], [] | [UserProfile]>,
   'initSystem' : ActorMethod<[], undefined>,
   'isCallerAdmin' : ActorMethod<[], boolean>,
@@ -106,8 +124,13 @@ export interface _SERVICE {
     [[] | [BloodGroup], [] | [string], boolean],
     Array<DonorProfile>
   >,
+  'searchDonorsPublic' : ActorMethod<
+    [[] | [BloodGroup], [] | [string], [] | [string], boolean],
+    Array<DonorPublicInfo>
+  >,
   'updateDonorAvailability' : ActorMethod<[boolean], boolean>,
   'updateUser' : ActorMethod<[User], undefined>,
+  'upgrade' : ActorMethod<[], undefined>,
 }
 export declare const idlService: IDL.ServiceClass;
 export declare const idlInitArgs: IDL.Type[];

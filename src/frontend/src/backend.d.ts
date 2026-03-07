@@ -7,6 +7,16 @@ export interface None {
     __kind__: "None";
 }
 export type Option<T> = Some<T> | None;
+export interface DonorPublicInfo {
+    city: string;
+    userId: Principal;
+    name: string;
+    lastDonationDate?: bigint;
+    availability: boolean;
+    bloodGroup: BloodGroup;
+    totalDonations: bigint;
+    phone: string;
+}
 export interface BloodRequest {
     id: bigint;
     urgencyLevel: UrgencyLevel;
@@ -36,6 +46,12 @@ export interface DonorProfile {
     availability: boolean;
     bloodGroup: BloodGroup;
     totalDonations: bigint;
+}
+export interface PublicUserEntry {
+    city: string;
+    name: string;
+    role: Role;
+    bloodGroup?: BloodGroup;
 }
 export interface HospitalProfile {
     isApproved: boolean;
@@ -91,16 +107,20 @@ export interface backendInterface {
     getAllHospitals(): Promise<Array<HospitalProfile>>;
     getAllUsers(): Promise<Array<User>>;
     getBloodRequests(): Promise<Array<BloodRequest>>;
+    getCallerDonorProfile(): Promise<DonorProfile | null>;
     getCallerUserProfile(): Promise<UserProfile | null>;
     getCallerUserRole(): Promise<UserRole>;
     getDonorProfile(userId: Principal): Promise<DonorProfile | null>;
-    getUser(userId: Principal): Promise<User>;
+    getPublicUserList(): Promise<Array<PublicUserEntry>>;
+    getTotalUsers(): Promise<bigint>;
     getUserProfile(user: Principal): Promise<UserProfile | null>;
     initSystem(): Promise<void>;
     isCallerAdmin(): Promise<boolean>;
     registerUser(name: string, email: string, phone: string, role: Role, city: string, bloodGroup: BloodGroup | null): Promise<Principal>;
     saveCallerUserProfile(profile: UserProfile): Promise<void>;
     searchDonors(bloodGroup: BloodGroup | null, city: string | null, availableOnly: boolean): Promise<Array<DonorProfile>>;
+    searchDonorsPublic(bloodGroup: BloodGroup | null, city: string | null, name: string | null, availableOnly: boolean): Promise<Array<DonorPublicInfo>>;
     updateDonorAvailability(available: boolean): Promise<boolean>;
     updateUser(user: User): Promise<void>;
+    upgrade(): Promise<void>;
 }

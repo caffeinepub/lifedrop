@@ -1,7 +1,13 @@
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Building2, CheckCircle, Clock, Minus, Plus } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -13,22 +19,13 @@ type BloodInventory = {
   status: "critical" | "low" | "normal" | "good";
 };
 
-const initialInventory: BloodInventory[] = [
-  { group: "A+", quantity: 1200, status: "good" },
-  { group: "A−", quantity: 300, status: "low" },
-  { group: "B+", quantity: 800, status: "normal" },
-  { group: "B−", quantity: 150, status: "critical" },
-  { group: "AB+", quantity: 550, status: "normal" },
-  { group: "AB−", quantity: 200, status: "low" },
-  { group: "O+", quantity: 2000, status: "good" },
-  { group: "O−", quantity: 400, status: "low" },
-];
+const ALL_BLOOD_GROUPS = ["A+", "A−", "B+", "B−", "AB+", "AB−", "O+", "O−"];
 
 const statusConfig = {
   critical: {
     label: "Critical",
-    color: "oklch(0.62 0.26 25)",
-    bg: "oklch(0.62 0.26 25 / 0.12)",
+    color: "oklch(0.65 0.28 22)",
+    bg: "oklch(0.65 0.28 22 / 0.12)",
   },
   low: {
     label: "Low",
@@ -47,11 +44,51 @@ const statusConfig = {
   },
 };
 
+function getStatus(qty: number): BloodInventory["status"] {
+  if (qty < 200) return "critical";
+  if (qty < 500) return "low";
+  if (qty < 1000) return "normal";
+  return "good";
+}
+
 export function HospitalDashboard() {
   const { userProfile } = useApp();
-  const [inventory, setInventory] =
-    useState<BloodInventory[]>(initialInventory);
+  const [inventory, setInventory] = useState<BloodInventory[]>([]);
   const [adjustAmount, setAdjustAmount] = useState<Record<string, string>>({});
+
+  // Add stock form
+  const [addGroup, setAddGroup] = useState("");
+  const [addQty, setAddQty] = useState("");
+
+  const handleAddStock = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!addGroup || !addQty || Number(addQty) <= 0) {
+      toast.error("Please select a blood group and enter a valid quantity");
+      return;
+    }
+    const qty = Number(addQty);
+    setInventory((prev) => {
+      const existing = prev.find((i) => i.group === addGroup);
+      if (existing) {
+        return prev.map((item) =>
+          item.group === addGroup
+            ? {
+                ...item,
+                quantity: item.quantity + qty,
+                status: getStatus(item.quantity + qty),
+              }
+            : item,
+        );
+      }
+      return [
+        ...prev,
+        { group: addGroup, quantity: qty, status: getStatus(qty) },
+      ];
+    });
+    toast.success(`Added ${qty} ml of ${addGroup} blood`);
+    setAddGroup("");
+    setAddQty("");
+  };
 
   const handleAdjust = (group: string, delta: number) => {
     const amount = Number.parseInt(adjustAmount[group] ?? "100") || 100;
@@ -59,15 +96,7 @@ export function HospitalDashboard() {
       prev.map((item) => {
         if (item.group === group) {
           const newQty = Math.max(0, item.quantity + delta * amount);
-          const status: BloodInventory["status"] =
-            newQty < 200
-              ? "critical"
-              : newQty < 500
-                ? "low"
-                : newQty < 1000
-                  ? "normal"
-                  : "good";
-          return { ...item, quantity: newQty, status };
+          return { ...item, quantity: newQty, status: getStatus(newQty) };
         }
         return item;
       }),
@@ -75,7 +104,7 @@ export function HospitalDashboard() {
     toast.success(`${group} inventory updated`);
   };
 
-  const isApproved = true; // Would come from hospital profile
+  const isApproved = true;
 
   return (
     <main className="container mx-auto px-4 py-8">
@@ -90,7 +119,7 @@ export function HospitalDashboard() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Profile Card */}
         <div className="lg:col-span-1 space-y-4">
-          <div className="rounded-xl card-dark p-5">
+          <div className="rounded-xl card-glow p-5">
             <div className="flex items-start gap-3 mb-4">
               <div
                 className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0"
@@ -143,19 +172,25 @@ export function HospitalDashboard() {
                 className="flex justify-between py-2 border-b"
                 style={{ borderColor: "oklch(var(--border))" }}
               >
-                <span className="text-muted-foreground">License No.</span>
-                <span className="font-mono text-xs">LIC-2024-CH-4521</span>
+                <span className="text-muted-foreground">City</span>
+                <span className="font-mono text-xs">
+                  {userProfile?.city ?? "—"}
+                </span>
               </div>
               <div
                 className="flex justify-between py-2 border-b"
                 style={{ borderColor: "oklch(var(--border))" }}
               >
-                <span className="text-muted-foreground">Total Donations</span>
-                <span className="font-semibold">1,240</span>
+                <span className="text-muted-foreground">Contact</span>
+                <span className="font-semibold text-xs truncate max-w-[120px]">
+                  {userProfile?.phone ?? "—"}
+                </span>
               </div>
               <div className="flex justify-between py-2">
-                <span className="text-muted-foreground">This Month</span>
-                <span className="font-semibold">84</span>
+                <span className="text-muted-foreground">Email</span>
+                <span className="text-xs truncate max-w-[120px]">
+                  {userProfile?.email ?? "—"}
+                </span>
               </div>
             </div>
           </div>
@@ -166,7 +201,7 @@ export function HospitalDashboard() {
               {
                 label: "Critical",
                 value: inventory.filter((i) => i.status === "critical").length,
-                color: "oklch(0.62 0.26 25)",
+                color: "oklch(0.65 0.28 22)",
               },
               {
                 label: "Low Stock",
@@ -202,155 +237,191 @@ export function HospitalDashboard() {
               </div>
             ))}
           </div>
+
+          {/* Add Blood Stock Form */}
+          <div className="rounded-xl card-glow p-5">
+            <h3 className="font-semibold mb-3 text-sm">Add Blood Stock</h3>
+            <form onSubmit={handleAddStock} className="space-y-3">
+              <div className="space-y-1.5">
+                <Label className="text-xs text-muted-foreground">
+                  Blood Group
+                </Label>
+                <Select value={addGroup} onValueChange={setAddGroup}>
+                  <SelectTrigger
+                    className="bg-secondary border-border h-8 text-sm"
+                    data-ocid="hospital.add_stock.select"
+                  >
+                    <SelectValue placeholder="Select group" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {ALL_BLOOD_GROUPS.map((g) => (
+                      <SelectItem key={g} value={g}>
+                        {g}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs text-muted-foreground">
+                  Quantity (ml)
+                </Label>
+                <Input
+                  type="number"
+                  placeholder="e.g. 450"
+                  min="1"
+                  value={addQty}
+                  onChange={(e) => setAddQty(e.target.value)}
+                  className="bg-secondary border-border h-8 text-sm"
+                  data-ocid="hospital.add_stock.input"
+                />
+              </div>
+              <Button
+                type="submit"
+                size="sm"
+                className="w-full font-semibold"
+                data-ocid="hospital.add_stock.submit_button"
+                style={{
+                  backgroundColor: "oklch(var(--neon-red))",
+                  color: "white",
+                }}
+              >
+                <Plus className="h-3.5 w-3.5 mr-1.5" />
+                Add Stock
+              </Button>
+            </form>
+          </div>
         </div>
 
         {/* Blood Inventory Table */}
         <div className="lg:col-span-2">
           <h2 className="font-semibold mb-4">Blood Inventory Management</h2>
-          <div className="rounded-xl card-dark overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr
-                    style={{
-                      borderBottom: "1px solid oklch(var(--border))",
-                      backgroundColor: "oklch(var(--secondary))",
-                    }}
+          <div className="rounded-xl card-glow overflow-hidden">
+            {inventory.length === 0 ? (
+              <div
+                className="text-center py-16 text-muted-foreground"
+                data-ocid="hospital.inventory.empty_state"
+              >
+                <div className="text-4xl mb-3">🩸</div>
+                <h3 className="font-semibold text-base mb-1">
+                  No blood stock added yet
+                </h3>
+                <p className="text-sm">
+                  Use the "Add Blood Stock" form to record your blood inventory.
+                  <br />
+                  All quantities start at 0 — only real data is shown here.
+                </p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr
+                      style={{
+                        borderBottom: "1px solid oklch(var(--border))",
+                        backgroundColor: "oklch(var(--secondary))",
+                      }}
+                    >
+                      <th className="text-left px-4 py-3 font-semibold text-xs uppercase tracking-wider text-muted-foreground">
+                        Group
+                      </th>
+                      <th className="text-left px-4 py-3 font-semibold text-xs uppercase tracking-wider text-muted-foreground">
+                        Quantity (ml)
+                      </th>
+                      <th className="text-left px-4 py-3 font-semibold text-xs uppercase tracking-wider text-muted-foreground">
+                        Status
+                      </th>
+                      <th className="text-left px-4 py-3 font-semibold text-xs uppercase tracking-wider text-muted-foreground">
+                        Adjust
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody
+                    className="divide-y"
+                    style={{ borderColor: "oklch(var(--border))" }}
                   >
-                    <th className="text-left px-4 py-3 font-semibold text-xs uppercase tracking-wider text-muted-foreground">
-                      Group
-                    </th>
-                    <th className="text-left px-4 py-3 font-semibold text-xs uppercase tracking-wider text-muted-foreground">
-                      Quantity (ml)
-                    </th>
-                    <th className="text-left px-4 py-3 font-semibold text-xs uppercase tracking-wider text-muted-foreground">
-                      Status
-                    </th>
-                    <th className="text-left px-4 py-3 font-semibold text-xs uppercase tracking-wider text-muted-foreground">
-                      Adjust
-                    </th>
-                  </tr>
-                </thead>
-                <tbody
-                  className="divide-y"
-                  style={{ borderColor: "oklch(var(--border))" }}
-                >
-                  {inventory.map((item, i) => {
-                    const sc = statusConfig[item.status];
-                    return (
-                      <tr
-                        key={item.group}
-                        data-ocid={`hospital.inventory.row.${i + 1}`}
-                        className="hover:bg-secondary/50 transition-colors"
-                      >
-                        <td className="px-4 py-3">
-                          <span
-                            className="font-display font-black text-base"
-                            style={{ color: "oklch(var(--neon-red))" }}
-                          >
-                            {item.group}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3 font-mono font-semibold">
-                          {item.quantity.toLocaleString()}
-                        </td>
-                        <td className="px-4 py-3">
-                          <span
-                            className="text-xs px-2 py-1 rounded-full font-medium"
-                            style={{ backgroundColor: sc.bg, color: sc.color }}
-                          >
-                            {sc.label}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3">
-                          <div className="flex items-center gap-2">
-                            <Input
-                              type="number"
-                              placeholder="ml"
-                              value={adjustAmount[item.group] ?? ""}
-                              onChange={(e) =>
-                                setAdjustAmount((p) => ({
-                                  ...p,
-                                  [item.group]: e.target.value,
-                                }))
-                              }
-                              className="w-20 h-7 text-xs bg-secondary border-border"
-                            />
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="h-7 w-7 p-0"
-                              onClick={() => handleAdjust(item.group, 1)}
-                              data-ocid={`hospital.inventory.add.button.${i + 1}`}
+                    {inventory.map((item, i) => {
+                      const sc = statusConfig[item.status];
+                      return (
+                        <tr
+                          key={item.group}
+                          data-ocid={`hospital.inventory.row.${i + 1}`}
+                          className="hover:bg-secondary/50 transition-colors"
+                        >
+                          <td className="px-4 py-3">
+                            <span
+                              className="font-display font-black text-base"
+                              style={{ color: "oklch(var(--neon-red))" }}
                             >
-                              <Plus className="h-3 w-3" />
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="h-7 w-7 p-0"
-                              onClick={() => handleAdjust(item.group, -1)}
-                              data-ocid={`hospital.inventory.subtract.button.${i + 1}`}
+                              {item.group}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 font-mono font-semibold">
+                            {item.quantity.toLocaleString()}
+                          </td>
+                          <td className="px-4 py-3">
+                            <span
+                              className="text-xs px-2 py-1 rounded-full font-medium"
+                              style={{
+                                backgroundColor: sc.bg,
+                                color: sc.color,
+                              }}
                             >
-                              <Minus className="h-3 w-3" />
-                            </Button>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
+                              {sc.label}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3">
+                            <div className="flex items-center gap-2">
+                              <Input
+                                type="number"
+                                placeholder="ml"
+                                value={adjustAmount[item.group] ?? ""}
+                                onChange={(e) =>
+                                  setAdjustAmount((p) => ({
+                                    ...p,
+                                    [item.group]: e.target.value,
+                                  }))
+                                }
+                                className="w-20 h-7 text-xs bg-secondary border-border"
+                              />
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="h-7 w-7 p-0"
+                                onClick={() => handleAdjust(item.group, 1)}
+                                data-ocid={`hospital.inventory.add.button.${i + 1}`}
+                              >
+                                <Plus className="h-3 w-3" />
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="h-7 w-7 p-0"
+                                onClick={() => handleAdjust(item.group, -1)}
+                                data-ocid={`hospital.inventory.subtract.button.${i + 1}`}
+                              >
+                                <Minus className="h-3 w-3" />
+                              </Button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
 
-          {/* Appointments placeholder */}
-          <div className="mt-6 rounded-xl card-dark p-5">
+          {/* Appointments */}
+          <div className="mt-6 rounded-xl card-glow p-5">
             <h3 className="font-semibold mb-4">Upcoming Donor Appointments</h3>
-            <div className="space-y-2" data-ocid="hospital.appointments.list">
-              {[
-                {
-                  donor: "Ankit Sharma",
-                  group: "O+",
-                  date: "March 12, 2026",
-                  time: "9:00 AM",
-                },
-                {
-                  donor: "Kavitha Reddy",
-                  group: "A+",
-                  date: "March 14, 2026",
-                  time: "11:30 AM",
-                },
-                {
-                  donor: "Mohammed Rizwan",
-                  group: "B+",
-                  date: "March 16, 2026",
-                  time: "3:00 PM",
-                },
-              ].map((appt, i) => (
-                <div
-                  key={appt.donor}
-                  data-ocid={`hospital.appointment.item.${i + 1}`}
-                  className="flex items-center justify-between p-3 rounded-lg"
-                  style={{ backgroundColor: "oklch(var(--secondary))" }}
-                >
-                  <div>
-                    <div className="text-sm font-medium">{appt.donor}</div>
-                    <div className="text-xs text-muted-foreground">
-                      {appt.date} · {appt.time}
-                    </div>
-                  </div>
-                  <Badge
-                    variant="outline"
-                    style={{
-                      borderColor: "oklch(var(--neon-red) / 0.4)",
-                      color: "oklch(var(--neon-red))",
-                    }}
-                  >
-                    {appt.group}
-                  </Badge>
-                </div>
-              ))}
+            <div
+              className="text-center py-6 text-muted-foreground"
+              data-ocid="hospital.appointments.empty_state"
+            >
+              <div className="text-3xl mb-2">🗓️</div>
+              <p className="text-sm">No donor appointments scheduled yet.</p>
             </div>
           </div>
         </div>

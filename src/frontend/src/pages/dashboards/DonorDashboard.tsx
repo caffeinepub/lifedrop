@@ -16,15 +16,16 @@ import {
   Loader2,
   XCircle,
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { BloodGroup, UrgencyLevel } from "../../backend.d";
 import { useApp } from "../../contexts/AppContext";
 
 import {
   useAcceptBloodRequest,
+  useAllDonors,
   useBloodRequests,
-  useSearchDonors,
+  useCallerDonorProfile,
   useUpdateDonorAvailability,
 } from "../../hooks/useQueries";
 
@@ -209,15 +210,82 @@ export function DonorDashboard() {
   const [availability, setAvailability] = useState(true);
 
   const { data: requests, isLoading: loadingRequests } = useBloodRequests();
-  const { data: topDonors } = useSearchDonors(null, null, true, true);
+  const { data: allDonorsData } = useAllDonors();
+  const { data: callerDonorProfile } = useCallerDonorProfile();
+
+  // Leaderboard: all donors sorted by totalDonations descending
+  const topDonors = useMemo(() => {
+    if (!allDonorsData) return [];
+    return [...allDonorsData]
+      .sort((a, b) => Number(b.totalDonations) - Number(a.totalDonations))
+      .slice(0, 5);
+  }, [allDonorsData]);
   const acceptRequest = useAcceptBloodRequest();
   const updateAvailability = useUpdateDonorAvailability();
 
-  const totalDonations = 8; // Would come from donor profile in production
+  const totalDonations = callerDonorProfile
+    ? Number(callerDonorProfile.totalDonations)
+    : 0;
   const badge = getBadge(totalDonations);
-  const donorId = userProfile
-    ? `LD-${userProfile.name.replace(/\s+/g, "").slice(0, 6).toUpperCase()}-${Date.now().toString(36).slice(-4).toUpperCase()}`
-    : "LD-XXXXXXXX";
+
+  // Generate stable donor ID — keyed per person's name so different people get different IDs
+  const donorId = useMemo(() => {
+    if (!userProfile) return "LD-XXXXXX-0000";
+    // Use name-specific storage key so each person on this device gets their own ID
+    const nameKey = `lifedrop_donor_id_${userProfile.name.replace(/\s+/g, "_").toLowerCase()}`;
+    const stored = localStorage.getItem(nameKey);
+    if (stored) return stored;
+    const prefix = userProfile.name
+      .replace(/\s+/g, "")
+      .slice(0, 6)
+      .toUpperCase()
+      .padEnd(6, "X");
+    const suffix = Date.now().toString(16).slice(-4).toUpperCase();
+    const id = `LD-${prefix}-${suffix}`;
+    localStorage.setItem(nameKey, id);
+    // Also save current user's ID for backward compat (DonorIdPage uses this)
+    localStorage.setItem("lifedrop_donor_id", id);
+    // Save donor card data so the ID page can decode it without auth
+    const cardData = {
+      name: userProfile.name,
+      bloodGroup: userProfile.bloodGroup ?? "",
+      city: userProfile.city ?? "",
+      totalDonations: totalDonations,
+    };
+    localStorage.setItem(`lifedrop_donor_card_${id}`, JSON.stringify(cardData));
+    return id;
+  }, [userProfile, totalDonations]);
+
+  // Cache donor profile for DonorIdPage and update card data
+  useEffect(() => {
+    if (callerDonorProfile) {
+      localStorage.setItem(
+        "lifedrop_donor_profile_cache",
+        JSON.stringify({
+          totalDonations: Number(callerDonorProfile.totalDonations),
+        }),
+      );
+      // Update card data for this donor's ID card
+      if (userProfile) {
+        const nameKey = `lifedrop_donor_id_${userProfile.name.replace(/\s+/g, "_").toLowerCase()}`;
+        const id =
+          localStorage.getItem(nameKey) ||
+          localStorage.getItem("lifedrop_donor_id");
+        if (id) {
+          const cardData = {
+            name: userProfile.name,
+            bloodGroup: userProfile.bloodGroup ?? "",
+            city: userProfile.city ?? "",
+            totalDonations: Number(callerDonorProfile.totalDonations),
+          };
+          localStorage.setItem(
+            `lifedrop_donor_card_${id}`,
+            JSON.stringify(cardData),
+          );
+        }
+      }
+    }
+  }, [callerDonorProfile, userProfile]);
 
   const handleToggleAvailability = async (val: boolean) => {
     setAvailability(val);
@@ -303,14 +371,14 @@ export function DonorDashboard() {
               </div>
             </div>
 
-            <div className="grid grid-cols-3 gap-2 mb-4">
+            <div className="grid grid-cols-2 gap-2 mb-4">
               {[
                 { label: "Donations", value: totalDonations },
                 {
                   label: "Lives Saved",
-                  value: Math.ceil(totalDonations * 2.7),
+                  value:
+                    totalDonations > 0 ? Math.ceil(totalDonations * 2.7) : 0,
                 },
-                { label: "Rank", value: "#42" },
               ].map((stat) => (
                 <div
                   key={stat.label}
@@ -350,7 +418,7 @@ export function DonorDashboard() {
             onClick={() =>
               void navigate({
                 to: "/donor-id/$id",
-                params: { id: "donor-001" },
+                params: { id: donorId },
               })
             }
           >
@@ -412,10 +480,10 @@ export function DonorDashboard() {
                 className="font-semibold"
                 style={{ color: "oklch(0.65 0.2 140)" }}
               >
-                You are eligible to donate!
+                Check your eligibility below
               </div>
               <div className="text-xs text-muted-foreground">
-                Last donation was 62 days ago
+                Use the eligibility checker to see if you can donate today
               </div>
             </div>
           </div>
@@ -602,55 +670,70 @@ export function DonorDashboard() {
               <h3 className="font-semibold flex items-center gap-2">
                 🏆 Top Donors Leaderboard
               </h3>
+              <p className="text-xs text-muted-foreground mt-1">
+                Rankings based on verified donations
+              </p>
             </div>
             <div
               className="divide-y"
               style={{ borderColor: "oklch(var(--border))" }}
             >
-              {(topDonors ?? []).slice(0, 5).map((donor, i) => (
-                <div
-                  key={donor.userId.toString()}
-                  className="p-4 flex items-center gap-3"
-                  data-ocid={`donor.leaderboard.item.${i + 1}`}
-                >
+              {topDonors.map((donor, i) => {
+                const medalGlow =
+                  i === 0
+                    ? { boxShadow: "0 0 15px oklch(0.78 0.19 50 / 0.3)" }
+                    : i === 1
+                      ? { boxShadow: "0 0 12px oklch(0.72 0.1 240 / 0.3)" }
+                      : i === 2
+                        ? { boxShadow: "0 0 10px oklch(0.65 0.18 55 / 0.3)" }
+                        : {};
+                const rankColors = [
+                  "oklch(0.78 0.19 50)",
+                  "oklch(0.72 0.1 240)",
+                  "oklch(0.65 0.18 55)",
+                ];
+                return (
                   <div
-                    className="w-6 text-center font-mono text-sm font-bold"
-                    style={{
-                      color:
-                        i < 3
-                          ? [
-                              "oklch(0.78 0.19 50)",
-                              "oklch(0.72 0.1 240)",
-                              "oklch(0.65 0.18 55)",
-                            ][i]
-                          : undefined,
-                    }}
+                    key={donor.userId.toString()}
+                    className="p-4 flex items-center gap-3"
+                    data-ocid={`donor.leaderboard.item.${i + 1}`}
+                    style={medalGlow}
                   >
-                    {i + 1}
-                  </div>
-                  <div
-                    className="w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold flex-shrink-0"
-                    style={{
-                      backgroundColor: "oklch(var(--neon-red) / 0.12)",
-                      color: "oklch(var(--neon-red))",
-                    }}
-                  >
-                    {bloodGroupLabel[donor.bloodGroup] ?? "?"}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="text-sm font-medium truncate">
-                      {donor.userId.toString().slice(0, 10)}...
+                    <div
+                      className="w-6 text-center font-mono text-sm font-bold"
+                      style={{
+                        color: i < 3 ? rankColors[i] : undefined,
+                      }}
+                    >
+                      {i + 1}
+                    </div>
+                    <div
+                      className="w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold flex-shrink-0"
+                      style={{
+                        backgroundColor: "oklch(var(--neon-red) / 0.12)",
+                        color: "oklch(var(--neon-red))",
+                      }}
+                    >
+                      {bloodGroupLabel[donor.bloodGroup] ?? "?"}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm font-medium truncate">
+                        Donor #{i + 1}
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        {bloodGroupLabel[donor.bloodGroup] ?? "?"} blood group
+                      </div>
+                    </div>
+                    <div
+                      className="text-sm font-bold"
+                      style={{ color: "oklch(var(--neon-red))" }}
+                    >
+                      {Number(donor.totalDonations)} 🩸
                     </div>
                   </div>
-                  <div
-                    className="text-sm font-bold"
-                    style={{ color: "oklch(var(--neon-red))" }}
-                  >
-                    {Number(donor.totalDonations)} 🩸
-                  </div>
-                </div>
-              ))}
-              {(!topDonors || topDonors.length === 0) && (
+                );
+              })}
+              {topDonors.length === 0 && (
                 <div className="p-6 text-center text-muted-foreground text-sm">
                   Be the first on the leaderboard!
                 </div>
@@ -658,7 +741,7 @@ export function DonorDashboard() {
             </div>
           </div>
 
-          {/* Appointments placeholder */}
+          {/* Appointments */}
           <div className="rounded-xl card-dark p-5">
             <h3 className="font-semibold mb-4 flex items-center gap-2">
               <Clock
@@ -667,47 +750,16 @@ export function DonorDashboard() {
               />
               Upcoming Appointments
             </h3>
-            {[
-              {
-                hospital: "Apollo Hospital, Chennai",
-                date: "March 15, 2026",
-                time: "10:00 AM",
-              },
-              {
-                hospital: "AIIMS Delhi",
-                date: "April 2, 2026",
-                time: "2:30 PM",
-              },
-            ].map((appt, i) => (
-              <div
-                key={appt.hospital}
-                className="flex items-center gap-3 p-3 rounded-lg mb-2 last:mb-0"
-                data-ocid={`donor.appointment.item.${i + 1}`}
-                style={{ backgroundColor: "oklch(var(--secondary))" }}
-              >
-                <div
-                  className="w-10 h-10 rounded-lg flex items-center justify-center text-lg flex-shrink-0"
-                  style={{ backgroundColor: "oklch(var(--neon-red) / 0.1)" }}
-                >
-                  🗓️
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="text-sm font-medium truncate">
-                    {appt.hospital}
-                  </div>
-                  <div className="text-xs text-muted-foreground">
-                    {appt.date} at {appt.time}
-                  </div>
-                </div>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  className="text-xs h-7 text-muted-foreground"
-                >
-                  Cancel
-                </Button>
-              </div>
-            ))}
+            <div
+              className="text-center py-6 text-muted-foreground"
+              data-ocid="donor.appointments.empty_state"
+            >
+              <div className="text-3xl mb-2">🗓️</div>
+              <p className="text-sm">No appointments scheduled yet.</p>
+              <p className="text-xs mt-1 opacity-70">
+                Book a donation appointment to see it here.
+              </p>
+            </div>
           </div>
         </div>
       </div>

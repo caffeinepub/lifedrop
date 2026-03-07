@@ -68,6 +68,13 @@ export const BloodRequest = IDL.Record({
   'requesterId' : IDL.Principal,
   'quantityMl' : IDL.Nat,
 });
+export const DonorProfile = IDL.Record({
+  'userId' : IDL.Principal,
+  'lastDonationDate' : IDL.Opt(IDL.Int),
+  'availability' : IDL.Bool,
+  'bloodGroup' : BloodGroup,
+  'totalDonations' : IDL.Nat,
+});
 export const UserProfile = IDL.Record({
   'city' : IDL.Text,
   'name' : IDL.Text,
@@ -76,12 +83,21 @@ export const UserProfile = IDL.Record({
   'bloodGroup' : IDL.Opt(BloodGroup),
   'phone' : IDL.Text,
 });
-export const DonorProfile = IDL.Record({
+export const PublicUserEntry = IDL.Record({
+  'city' : IDL.Text,
+  'name' : IDL.Text,
+  'role' : Role,
+  'bloodGroup' : IDL.Opt(BloodGroup),
+});
+export const DonorPublicInfo = IDL.Record({
+  'city' : IDL.Text,
   'userId' : IDL.Principal,
+  'name' : IDL.Text,
   'lastDonationDate' : IDL.Opt(IDL.Int),
   'availability' : IDL.Bool,
   'bloodGroup' : BloodGroup,
   'totalDonations' : IDL.Nat,
+  'phone' : IDL.Text,
 });
 
 export const idlService = IDL.Service({
@@ -106,6 +122,7 @@ export const idlService = IDL.Service({
   'getAllHospitals' : IDL.Func([], [IDL.Vec(HospitalProfile)], ['query']),
   'getAllUsers' : IDL.Func([], [IDL.Vec(User)], ['query']),
   'getBloodRequests' : IDL.Func([], [IDL.Vec(BloodRequest)], ['query']),
+  'getCallerDonorProfile' : IDL.Func([], [IDL.Opt(DonorProfile)], ['query']),
   'getCallerUserProfile' : IDL.Func([], [IDL.Opt(UserProfile)], ['query']),
   'getCallerUserRole' : IDL.Func([], [UserRole], ['query']),
   'getDonorProfile' : IDL.Func(
@@ -113,7 +130,8 @@ export const idlService = IDL.Service({
       [IDL.Opt(DonorProfile)],
       ['query'],
     ),
-  'getUser' : IDL.Func([IDL.Principal], [User], ['query']),
+  'getPublicUserList' : IDL.Func([], [IDL.Vec(PublicUserEntry)], ['query']),
+  'getTotalUsers' : IDL.Func([], [IDL.Nat], ['query']),
   'getUserProfile' : IDL.Func(
       [IDL.Principal],
       [IDL.Opt(UserProfile)],
@@ -132,8 +150,14 @@ export const idlService = IDL.Service({
       [IDL.Vec(DonorProfile)],
       ['query'],
     ),
+  'searchDonorsPublic' : IDL.Func(
+      [IDL.Opt(BloodGroup), IDL.Opt(IDL.Text), IDL.Opt(IDL.Text), IDL.Bool],
+      [IDL.Vec(DonorPublicInfo)],
+      ['query'],
+    ),
   'updateDonorAvailability' : IDL.Func([IDL.Bool], [IDL.Bool], []),
   'updateUser' : IDL.Func([User], [], []),
+  'upgrade' : IDL.Func([], [], []),
 });
 
 export const idlInitArgs = [];
@@ -199,6 +223,13 @@ export const idlFactory = ({ IDL }) => {
     'requesterId' : IDL.Principal,
     'quantityMl' : IDL.Nat,
   });
+  const DonorProfile = IDL.Record({
+    'userId' : IDL.Principal,
+    'lastDonationDate' : IDL.Opt(IDL.Int),
+    'availability' : IDL.Bool,
+    'bloodGroup' : BloodGroup,
+    'totalDonations' : IDL.Nat,
+  });
   const UserProfile = IDL.Record({
     'city' : IDL.Text,
     'name' : IDL.Text,
@@ -207,12 +238,21 @@ export const idlFactory = ({ IDL }) => {
     'bloodGroup' : IDL.Opt(BloodGroup),
     'phone' : IDL.Text,
   });
-  const DonorProfile = IDL.Record({
+  const PublicUserEntry = IDL.Record({
+    'city' : IDL.Text,
+    'name' : IDL.Text,
+    'role' : Role,
+    'bloodGroup' : IDL.Opt(BloodGroup),
+  });
+  const DonorPublicInfo = IDL.Record({
+    'city' : IDL.Text,
     'userId' : IDL.Principal,
+    'name' : IDL.Text,
     'lastDonationDate' : IDL.Opt(IDL.Int),
     'availability' : IDL.Bool,
     'bloodGroup' : BloodGroup,
     'totalDonations' : IDL.Nat,
+    'phone' : IDL.Text,
   });
   
   return IDL.Service({
@@ -237,6 +277,7 @@ export const idlFactory = ({ IDL }) => {
     'getAllHospitals' : IDL.Func([], [IDL.Vec(HospitalProfile)], ['query']),
     'getAllUsers' : IDL.Func([], [IDL.Vec(User)], ['query']),
     'getBloodRequests' : IDL.Func([], [IDL.Vec(BloodRequest)], ['query']),
+    'getCallerDonorProfile' : IDL.Func([], [IDL.Opt(DonorProfile)], ['query']),
     'getCallerUserProfile' : IDL.Func([], [IDL.Opt(UserProfile)], ['query']),
     'getCallerUserRole' : IDL.Func([], [UserRole], ['query']),
     'getDonorProfile' : IDL.Func(
@@ -244,7 +285,8 @@ export const idlFactory = ({ IDL }) => {
         [IDL.Opt(DonorProfile)],
         ['query'],
       ),
-    'getUser' : IDL.Func([IDL.Principal], [User], ['query']),
+    'getPublicUserList' : IDL.Func([], [IDL.Vec(PublicUserEntry)], ['query']),
+    'getTotalUsers' : IDL.Func([], [IDL.Nat], ['query']),
     'getUserProfile' : IDL.Func(
         [IDL.Principal],
         [IDL.Opt(UserProfile)],
@@ -263,8 +305,14 @@ export const idlFactory = ({ IDL }) => {
         [IDL.Vec(DonorProfile)],
         ['query'],
       ),
+    'searchDonorsPublic' : IDL.Func(
+        [IDL.Opt(BloodGroup), IDL.Opt(IDL.Text), IDL.Opt(IDL.Text), IDL.Bool],
+        [IDL.Vec(DonorPublicInfo)],
+        ['query'],
+      ),
     'updateDonorAvailability' : IDL.Func([IDL.Bool], [IDL.Bool], []),
     'updateUser' : IDL.Func([User], [], []),
+    'upgrade' : IDL.Func([], [], []),
   });
 };
 

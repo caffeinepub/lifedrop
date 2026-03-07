@@ -48,44 +48,54 @@ const urgencyColors: Record<string, string> = {
 
 // Blood group distribution chart
 function BloodGroupChart({ data }: { data: Record<string, number> }) {
-  const max = Math.max(...Object.values(data), 1);
   const groups = ["A+", "A−", "B+", "B−", "AB+", "AB−", "O+", "O−"];
+  const hasData = Object.values(data).some((v) => v > 0);
+  const max = Math.max(...Object.values(data), 1);
   return (
     <div className="rounded-xl card-dark p-5">
       <h3 className="font-semibold mb-4 text-sm">Blood Group Distribution</h3>
-      <div className="space-y-2">
-        {groups.map((group) => {
-          const count = data[group] ?? Math.floor(Math.random() * 50 + 10);
-          const pct = (count / max) * 100;
-          return (
-            <div
-              key={group}
-              className="flex items-center gap-3"
-              data-ocid={`admin.chart.${group.replace("+", "pos").replace("−", "neg")}.chart_point`}
-            >
+      {!hasData ? (
+        <div
+          className="text-center py-6 text-muted-foreground text-sm"
+          data-ocid="admin.bloodgroup_chart.empty_state"
+        >
+          No donor data yet. Register donors to see the distribution.
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {groups.map((group) => {
+            const count = data[group] ?? 0;
+            const pct = (count / max) * 100;
+            return (
               <div
-                className="w-8 text-xs font-bold text-right"
-                style={{ color: "oklch(var(--neon-red))" }}
-              >
-                {group}
-              </div>
-              <div
-                className="flex-1 h-5 rounded-full overflow-hidden"
-                style={{ backgroundColor: "oklch(var(--secondary))" }}
+                key={group}
+                className="flex items-center gap-3"
+                data-ocid={`admin.chart.${group.replace("+", "pos").replace("−", "neg")}.chart_point`}
               >
                 <div
-                  className="h-full rounded-full transition-all duration-500"
-                  style={{
-                    width: `${pct}%`,
-                    backgroundColor: "oklch(var(--neon-red))",
-                  }}
-                />
+                  className="w-8 text-xs font-bold text-right"
+                  style={{ color: "oklch(var(--neon-red))" }}
+                >
+                  {group}
+                </div>
+                <div
+                  className="flex-1 h-5 rounded-full overflow-hidden"
+                  style={{ backgroundColor: "oklch(var(--secondary))" }}
+                >
+                  <div
+                    className="h-full rounded-full transition-all duration-500"
+                    style={{
+                      width: `${pct}%`,
+                      backgroundColor: "oklch(var(--neon-red))",
+                    }}
+                  />
+                </div>
+                <div className="w-8 text-xs text-muted-foreground">{count}</div>
               </div>
-              <div className="w-8 text-xs text-muted-foreground">{count}</div>
-            </div>
-          );
-        })}
-      </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
@@ -101,7 +111,23 @@ export function AdminDashboard() {
   const activeRequests = requests?.length ?? 0;
   const pendingHospitals = hospitals?.filter((h) => !h.isApproved).length ?? 0;
 
+  const bgMap: Record<string, string> = {
+    A_Positive: "A+",
+    A_Negative: "A−",
+    B_Positive: "B+",
+    B_Negative: "B−",
+    AB_Positive: "AB+",
+    AB_Negative: "AB−",
+    O_Positive: "O+",
+    O_Negative: "O−",
+  };
   const bloodGroupData: Record<string, number> = {};
+  for (const u of users ?? []) {
+    if (u.bloodGroup) {
+      const label = bgMap[u.bloodGroup] ?? u.bloodGroup;
+      bloodGroupData[label] = (bloodGroupData[label] ?? 0) + 1;
+    }
+  }
 
   const handleApprove = async (hospitalId: string, name: string) => {
     try {
@@ -175,47 +201,62 @@ export function AdminDashboard() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
         <div className="lg:col-span-2">
-          {/* City demand placeholder */}
+          {/* City demand - based on real blood requests */}
           <div className="rounded-xl card-dark p-5 mb-4">
             <h3 className="font-semibold mb-4 text-sm">
-              City-wise Blood Demand
+              City-wise Blood Requests
             </h3>
-            <div className="grid grid-cols-3 gap-3">
-              {[
-                "Chennai",
-                "Mumbai",
-                "Delhi",
-                "Bangalore",
-                "Hyderabad",
-                "Kolkata",
-              ].map((city, i) => {
-                const demand = [80, 65, 72, 58, 44, 51][i];
-                return (
-                  <div
-                    key={city}
-                    className="text-center p-3 rounded-lg"
-                    style={{ backgroundColor: "oklch(var(--secondary))" }}
-                  >
-                    <div className="font-semibold text-sm">{city}</div>
-                    <div
-                      className="h-1.5 rounded-full mt-2 mb-1"
-                      style={{ backgroundColor: "oklch(var(--border))" }}
-                    >
+            {(() => {
+              const cityMap: Record<string, number> = {};
+              for (const r of requests ?? []) {
+                cityMap[r.city] = (cityMap[r.city] ?? 0) + 1;
+              }
+              const entries = Object.entries(cityMap)
+                .sort((a, b) => b[1] - a[1])
+                .slice(0, 6);
+              const max = entries[0]?.[1] ?? 1;
+              return entries.length === 0 ? (
+                <div
+                  className="text-center py-6 text-muted-foreground text-sm"
+                  data-ocid="admin.city_demand.empty_state"
+                >
+                  No blood requests yet. Data will appear here once requests are
+                  submitted.
+                </div>
+              ) : (
+                <div className="grid grid-cols-3 gap-3">
+                  {entries.map(([city, count]) => {
+                    const pct = Math.round((count / max) * 100);
+                    return (
                       <div
-                        className="h-full rounded-full"
-                        style={{
-                          width: `${demand}%`,
-                          backgroundColor: "oklch(var(--neon-red))",
-                        }}
-                      />
-                    </div>
-                    <div className="text-xs text-muted-foreground">
-                      {demand} requests
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
+                        key={city}
+                        className="text-center p-3 rounded-lg"
+                        style={{ backgroundColor: "oklch(var(--secondary))" }}
+                      >
+                        <div className="font-semibold text-sm truncate">
+                          {city}
+                        </div>
+                        <div
+                          className="h-1.5 rounded-full mt-2 mb-1"
+                          style={{ backgroundColor: "oklch(var(--border))" }}
+                        >
+                          <div
+                            className="h-full rounded-full"
+                            style={{
+                              width: `${pct}%`,
+                              backgroundColor: "oklch(var(--neon-red))",
+                            }}
+                          />
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          {count} request{count !== 1 ? "s" : ""}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })()}
           </div>
         </div>
 

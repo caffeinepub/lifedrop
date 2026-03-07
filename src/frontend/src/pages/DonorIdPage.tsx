@@ -2,6 +2,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useParams } from "@tanstack/react-router";
 import { Award, Download, Droplets, Share2 } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
 const bloodGroupColors: Record<string, string> = {
@@ -16,7 +17,6 @@ const bloodGroupColors: Record<string, string> = {
 };
 
 function QRPattern({ seed }: { seed: string }) {
-  // Generate a pseudo-QR pattern from the seed string
   const rows = 10;
   const cols = 10;
   const cells: boolean[][] = [];
@@ -48,47 +48,120 @@ function QRPattern({ seed }: { seed: string }) {
   );
 }
 
-// Mock donor data – in production this would come from backend
-const mockDonors: Record<
-  string,
-  {
-    name: string;
-    bloodGroup: string;
-    city: string;
-    totalDonations: number;
-    joinedDate: string;
-    badge: string;
-  }
-> = {
-  "donor-001": {
-    name: "Rajesh Kumar",
-    bloodGroup: "O+",
-    city: "Chennai",
-    totalDonations: 15,
-    joinedDate: "Jan 2023",
-    badge: "Gold Donor",
-  },
-  "donor-002": {
-    name: "Priya Sharma",
-    bloodGroup: "A+",
-    city: "Mumbai",
-    totalDonations: 7,
-    joinedDate: "Mar 2024",
-    badge: "Silver Donor",
-  },
-  "donor-003": {
-    name: "Mohammed Ali",
-    bloodGroup: "B+",
-    city: "Hyderabad",
-    totalDonations: 28,
-    joinedDate: "Jun 2022",
-    badge: "Life Saver",
-  },
+const bgMap: Record<string, string> = {
+  A_Positive: "A+",
+  A_Negative: "A−",
+  B_Positive: "B+",
+  B_Negative: "B−",
+  AB_Positive: "AB+",
+  AB_Negative: "AB−",
+  O_Positive: "O+",
+  O_Negative: "O−",
 };
+
+function getBadgeLabel(n: number) {
+  if (n >= 25) return "Life Saver";
+  if (n >= 10) return "Gold Donor";
+  if (n >= 5) return "Silver Donor";
+  return "New Donor";
+}
+
+interface DonorCardData {
+  name: string;
+  bloodGroup: string;
+  city: string;
+  totalDonations: number;
+  joinedDate?: string;
+}
+
+function loadDonorCardData(id: string): DonorCardData | null {
+  // 1. Try direct card data stored under this specific ID
+  try {
+    const raw = localStorage.getItem(`lifedrop_donor_card_${id}`);
+    if (raw) {
+      const parsed = JSON.parse(raw) as {
+        name?: string;
+        bloodGroup?: string;
+        city?: string;
+        totalDonations?: number;
+      };
+      if (parsed.name) {
+        const bloodGroup = parsed.bloodGroup
+          ? (bgMap[parsed.bloodGroup] ?? parsed.bloodGroup)
+          : "?";
+        return {
+          name: parsed.name,
+          bloodGroup,
+          city: parsed.city ?? "—",
+          totalDonations: parsed.totalDonations ?? 0,
+        };
+      }
+    }
+  } catch {
+    /* ignore */
+  }
+
+  // 2. Fall back: check if this is the current user's own ID
+  const myId = localStorage.getItem("lifedrop_donor_id");
+  if (myId === id) {
+    try {
+      const raw = localStorage.getItem("lifedrop_user_profile");
+      if (raw) {
+        const profile = JSON.parse(raw) as {
+          name?: string;
+          bloodGroup?: string;
+          city?: string;
+        };
+        let totalDonations = 0;
+        try {
+          const dp = localStorage.getItem("lifedrop_donor_profile_cache");
+          if (dp) totalDonations = Number(JSON.parse(dp).totalDonations ?? 0);
+        } catch {
+          /* ignore */
+        }
+        if (profile.name) {
+          const bloodGroup = profile.bloodGroup
+            ? (bgMap[profile.bloodGroup] ?? profile.bloodGroup)
+            : "?";
+          return {
+            name: profile.name,
+            bloodGroup,
+            city: profile.city ?? "—",
+            totalDonations,
+          };
+        }
+      }
+    } catch {
+      /* ignore */
+    }
+  }
+
+  return null;
+}
 
 export function DonorIdPage() {
   const { id } = useParams({ strict: false }) as { id?: string };
-  const donor = id ? (mockDonors[id] ?? null) : null;
+  const [donor, setDonor] = useState<DonorCardData | null>(null);
+  const [notFound, setNotFound] = useState(false);
+
+  useEffect(() => {
+    if (!id) {
+      setNotFound(true);
+      return;
+    }
+    const data = loadDonorCardData(id);
+    if (data) {
+      setDonor({
+        ...data,
+        joinedDate: new Date().toLocaleDateString("en-IN", {
+          month: "short",
+          year: "numeric",
+        }),
+      });
+    } else {
+      setNotFound(true);
+    }
+  }, [id]);
 
   const handleShare = () => {
     navigator.clipboard.writeText(window.location.href);
@@ -99,7 +172,7 @@ export function DonorIdPage() {
     window.print();
   };
 
-  if (!donor) {
+  if (notFound && !donor) {
     return (
       <main className="container mx-auto px-4 py-24 text-center">
         <div className="text-4xl mb-4">❓</div>
@@ -108,8 +181,18 @@ export function DonorIdPage() {
         </h1>
         <p className="text-muted-foreground">
           The donor ID <code className="font-mono text-sm">{id}</code> was not
-          found.
+          found. Please register as a donor to generate your digital ID card.
         </p>
+      </main>
+    );
+  }
+
+  if (!donor) {
+    return (
+      <main className="container mx-auto px-4 py-24 text-center">
+        <div className="text-muted-foreground text-sm">
+          Loading donor card...
+        </div>
       </main>
     );
   }
@@ -217,7 +300,7 @@ export function DonorIdPage() {
                   }}
                 >
                   <Award className="h-3 w-3 mr-1" />
-                  {donor.badge}
+                  {getBadgeLabel(donor.totalDonations)}
                 </Badge>
               </div>
             </div>
@@ -242,7 +325,9 @@ export function DonorIdPage() {
             style={{ borderColor: "oklch(var(--border))" }}
           >
             <div className="text-xs text-muted-foreground">
-              Member since {donor.joinedDate}
+              {donor.joinedDate
+                ? `Member since ${donor.joinedDate}`
+                : "LIFEDROP Member"}
             </div>
             <div
               className="text-xs font-mono px-2 py-1 rounded"
@@ -277,32 +362,6 @@ export function DonorIdPage() {
           <Share2 className="h-4 w-4 mr-2" />
           Share
         </Button>
-      </div>
-
-      {/* Try other donors */}
-      <div
-        className="mt-8 p-4 rounded-xl text-center"
-        style={{ backgroundColor: "oklch(var(--secondary))" }}
-      >
-        <p className="text-sm text-muted-foreground mb-3">
-          Try demo donor IDs:
-        </p>
-        <div className="flex gap-2 justify-center flex-wrap">
-          {Object.keys(mockDonors).map((key) => (
-            <a
-              key={key}
-              href={`/donor-id/${key}`}
-              className="text-xs font-mono px-2 py-1 rounded hover:bg-primary/10 transition-colors"
-              style={{
-                backgroundColor: "oklch(var(--card))",
-                border: "1px solid oklch(var(--border))",
-                color: id === key ? "oklch(var(--neon-red))" : undefined,
-              }}
-            >
-              {key}
-            </a>
-          ))}
-        </div>
       </div>
     </main>
   );

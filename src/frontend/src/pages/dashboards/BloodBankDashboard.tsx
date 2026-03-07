@@ -47,50 +47,7 @@ const statusColors = {
   },
 };
 
-const initialUnits: BloodUnit[] = [
-  {
-    id: "BB-001",
-    group: "O+",
-    quantity: 2000,
-    expiryDate: "2026-04-15",
-    status: "fresh",
-  },
-  {
-    id: "BB-002",
-    group: "A+",
-    quantity: 1500,
-    expiryDate: "2026-03-12",
-    status: "expiring",
-  },
-  {
-    id: "BB-003",
-    group: "B+",
-    quantity: 800,
-    expiryDate: "2026-04-01",
-    status: "fresh",
-  },
-  {
-    id: "BB-004",
-    group: "AB+",
-    quantity: 450,
-    expiryDate: "2026-03-08",
-    status: "expiring",
-  },
-  {
-    id: "BB-005",
-    group: "O−",
-    quantity: 600,
-    expiryDate: "2026-05-01",
-    status: "fresh",
-  },
-  {
-    id: "BB-006",
-    group: "A−",
-    quantity: 300,
-    expiryDate: "2026-03-05",
-    status: "expired",
-  },
-];
+const initialUnits: BloodUnit[] = [];
 
 const bloodGroupOptions = ["A+", "A−", "B+", "B−", "AB+", "AB−", "O+", "O−"];
 
@@ -327,58 +284,74 @@ export function BloodBankDashboard() {
                   className="divide-y"
                   style={{ borderColor: "oklch(var(--border))" }}
                 >
-                  {units.map((unit, i) => {
-                    const sc = statusColors[unit.status];
-                    const daysLeft = Math.ceil(
-                      (new Date(unit.expiryDate).getTime() - Date.now()) /
-                        (1000 * 60 * 60 * 24),
-                    );
-                    return (
-                      <tr
-                        key={unit.id}
-                        data-ocid={`bloodbank.inventory.row.${i + 1}`}
-                        className="hover:bg-secondary/50 transition-colors"
+                  {units.length === 0 ? (
+                    <tr>
+                      <td
+                        colSpan={5}
+                        className="px-4 py-10 text-center text-muted-foreground text-sm"
+                        data-ocid="bloodbank.inventory.empty_state"
                       >
-                        <td className="px-4 py-3 font-mono text-xs text-muted-foreground">
-                          {unit.id}
-                        </td>
-                        <td className="px-4 py-3">
-                          <span
-                            className="font-display font-black"
-                            style={{ color: "oklch(var(--neon-red))" }}
-                          >
-                            {unit.group}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3 font-mono">
-                          {unit.quantity.toLocaleString()}
-                        </td>
-                        <td className="px-4 py-3 text-xs">
-                          <div>{unit.expiryDate}</div>
-                          <div
-                            style={{
-                              color:
-                                daysLeft < 7
-                                  ? sc.color
-                                  : "oklch(var(--muted-foreground))",
-                            }}
-                          >
-                            {daysLeft < 0
-                              ? "Expired"
-                              : `${daysLeft}d remaining`}
-                          </div>
-                        </td>
-                        <td className="px-4 py-3">
-                          <span
-                            className="text-xs px-2 py-1 rounded-full font-medium"
-                            style={{ backgroundColor: sc.bg, color: sc.color }}
-                          >
-                            {sc.label}
-                          </span>
-                        </td>
-                      </tr>
-                    );
-                  })}
+                        No blood units added yet. Use the form on the left to
+                        add stock.
+                      </td>
+                    </tr>
+                  ) : (
+                    units.map((unit, i) => {
+                      const sc = statusColors[unit.status];
+                      const daysLeft = Math.ceil(
+                        (new Date(unit.expiryDate).getTime() - Date.now()) /
+                          (1000 * 60 * 60 * 24),
+                      );
+                      return (
+                        <tr
+                          key={unit.id}
+                          data-ocid={`bloodbank.inventory.row.${i + 1}`}
+                          className="hover:bg-secondary/50 transition-colors"
+                        >
+                          <td className="px-4 py-3 font-mono text-xs text-muted-foreground">
+                            {unit.id}
+                          </td>
+                          <td className="px-4 py-3">
+                            <span
+                              className="font-display font-black"
+                              style={{ color: "oklch(var(--neon-red))" }}
+                            >
+                              {unit.group}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 font-mono">
+                            {unit.quantity.toLocaleString()}
+                          </td>
+                          <td className="px-4 py-3 text-xs">
+                            <div>{unit.expiryDate}</div>
+                            <div
+                              style={{
+                                color:
+                                  daysLeft < 7
+                                    ? sc.color
+                                    : "oklch(var(--muted-foreground))",
+                              }}
+                            >
+                              {daysLeft < 0
+                                ? "Expired"
+                                : `${daysLeft}d remaining`}
+                            </div>
+                          </td>
+                          <td className="px-4 py-3">
+                            <span
+                              className="text-xs px-2 py-1 rounded-full font-medium"
+                              style={{
+                                backgroundColor: sc.bg,
+                                color: sc.color,
+                              }}
+                            >
+                              {sc.label}
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
                 </tbody>
               </table>
             </div>

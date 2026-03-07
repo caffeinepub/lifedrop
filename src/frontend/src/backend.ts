@@ -89,6 +89,16 @@ export class ExternalBlob {
         return this;
     }
 }
+export interface DonorPublicInfo {
+    city: string;
+    userId: Principal;
+    name: string;
+    lastDonationDate?: bigint;
+    availability: boolean;
+    bloodGroup: BloodGroup;
+    totalDonations: bigint;
+    phone: string;
+}
 export interface BloodRequest {
     id: bigint;
     urgencyLevel: UrgencyLevel;
@@ -118,6 +128,12 @@ export interface DonorProfile {
     availability: boolean;
     bloodGroup: BloodGroup;
     totalDonations: bigint;
+}
+export interface PublicUserEntry {
+    city: string;
+    name: string;
+    role: Role;
+    bloodGroup?: BloodGroup;
 }
 export interface HospitalProfile {
     isApproved: boolean;
@@ -174,20 +190,24 @@ export interface backendInterface {
     getAllHospitals(): Promise<Array<HospitalProfile>>;
     getAllUsers(): Promise<Array<User>>;
     getBloodRequests(): Promise<Array<BloodRequest>>;
+    getCallerDonorProfile(): Promise<DonorProfile | null>;
     getCallerUserProfile(): Promise<UserProfile | null>;
     getCallerUserRole(): Promise<UserRole>;
     getDonorProfile(userId: Principal): Promise<DonorProfile | null>;
-    getUser(userId: Principal): Promise<User>;
+    getPublicUserList(): Promise<Array<PublicUserEntry>>;
+    getTotalUsers(): Promise<bigint>;
     getUserProfile(user: Principal): Promise<UserProfile | null>;
     initSystem(): Promise<void>;
     isCallerAdmin(): Promise<boolean>;
     registerUser(name: string, email: string, phone: string, role: Role, city: string, bloodGroup: BloodGroup | null): Promise<Principal>;
     saveCallerUserProfile(profile: UserProfile): Promise<void>;
     searchDonors(bloodGroup: BloodGroup | null, city: string | null, availableOnly: boolean): Promise<Array<DonorProfile>>;
+    searchDonorsPublic(bloodGroup: BloodGroup | null, city: string | null, name: string | null, availableOnly: boolean): Promise<Array<DonorPublicInfo>>;
     updateDonorAvailability(available: boolean): Promise<boolean>;
     updateUser(user: User): Promise<void>;
+    upgrade(): Promise<void>;
 }
-import type { BloodGroup as _BloodGroup, BloodRequest as _BloodRequest, DonorProfile as _DonorProfile, Role as _Role, UrgencyLevel as _UrgencyLevel, User as _User, UserProfile as _UserProfile, UserRole as _UserRole } from "./declarations/backend.did.d.ts";
+import type { BloodGroup as _BloodGroup, BloodRequest as _BloodRequest, DonorProfile as _DonorProfile, DonorPublicInfo as _DonorPublicInfo, PublicUserEntry as _PublicUserEntry, Role as _Role, UrgencyLevel as _UrgencyLevel, User as _User, UserProfile as _UserProfile, UserRole as _UserRole } from "./declarations/backend.did.d.ts";
 export class Backend implements backendInterface {
     constructor(private actor: ActorSubclass<_SERVICE>, private _uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, private _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, private processError?: (error: unknown) => never){}
     async _initializeAccessControlWithSecret(arg0: string): Promise<void> {
@@ -316,74 +336,102 @@ export class Backend implements backendInterface {
             return from_candid_vec_n15(this._uploadFile, this._downloadFile, result);
         }
     }
+    async getCallerDonorProfile(): Promise<DonorProfile | null> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getCallerDonorProfile();
+                return from_candid_opt_n20(this._uploadFile, this._downloadFile, result);
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getCallerDonorProfile();
+            return from_candid_opt_n20(this._uploadFile, this._downloadFile, result);
+        }
+    }
     async getCallerUserProfile(): Promise<UserProfile | null> {
         if (this.processError) {
             try {
                 const result = await this.actor.getCallerUserProfile();
-                return from_candid_opt_n20(this._uploadFile, this._downloadFile, result);
+                return from_candid_opt_n24(this._uploadFile, this._downloadFile, result);
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
             const result = await this.actor.getCallerUserProfile();
-            return from_candid_opt_n20(this._uploadFile, this._downloadFile, result);
+            return from_candid_opt_n24(this._uploadFile, this._downloadFile, result);
         }
     }
     async getCallerUserRole(): Promise<UserRole> {
         if (this.processError) {
             try {
                 const result = await this.actor.getCallerUserRole();
-                return from_candid_UserRole_n23(this._uploadFile, this._downloadFile, result);
+                return from_candid_UserRole_n27(this._uploadFile, this._downloadFile, result);
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
             const result = await this.actor.getCallerUserRole();
-            return from_candid_UserRole_n23(this._uploadFile, this._downloadFile, result);
+            return from_candid_UserRole_n27(this._uploadFile, this._downloadFile, result);
         }
     }
     async getDonorProfile(arg0: Principal): Promise<DonorProfile | null> {
         if (this.processError) {
             try {
                 const result = await this.actor.getDonorProfile(arg0);
-                return from_candid_opt_n25(this._uploadFile, this._downloadFile, result);
-            } catch (e) {
-                this.processError(e);
-                throw new Error("unreachable");
-            }
-        } else {
-            const result = await this.actor.getDonorProfile(arg0);
-            return from_candid_opt_n25(this._uploadFile, this._downloadFile, result);
-        }
-    }
-    async getUser(arg0: Principal): Promise<User> {
-        if (this.processError) {
-            try {
-                const result = await this.actor.getUser(arg0);
-                return from_candid_User_n8(this._uploadFile, this._downloadFile, result);
-            } catch (e) {
-                this.processError(e);
-                throw new Error("unreachable");
-            }
-        } else {
-            const result = await this.actor.getUser(arg0);
-            return from_candid_User_n8(this._uploadFile, this._downloadFile, result);
-        }
-    }
-    async getUserProfile(arg0: Principal): Promise<UserProfile | null> {
-        if (this.processError) {
-            try {
-                const result = await this.actor.getUserProfile(arg0);
                 return from_candid_opt_n20(this._uploadFile, this._downloadFile, result);
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
-            const result = await this.actor.getUserProfile(arg0);
+            const result = await this.actor.getDonorProfile(arg0);
             return from_candid_opt_n20(this._uploadFile, this._downloadFile, result);
+        }
+    }
+    async getPublicUserList(): Promise<Array<PublicUserEntry>> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getPublicUserList();
+                return from_candid_vec_n29(this._uploadFile, this._downloadFile, result);
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getPublicUserList();
+            return from_candid_vec_n29(this._uploadFile, this._downloadFile, result);
+        }
+    }
+    async getTotalUsers(): Promise<bigint> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getTotalUsers();
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getTotalUsers();
+            return result;
+        }
+    }
+    async getUserProfile(arg0: Principal): Promise<UserProfile | null> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getUserProfile(arg0);
+                return from_candid_opt_n24(this._uploadFile, this._downloadFile, result);
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getUserProfile(arg0);
+            return from_candid_opt_n24(this._uploadFile, this._downloadFile, result);
         }
     }
     async initSystem(): Promise<void> {
@@ -417,43 +465,57 @@ export class Backend implements backendInterface {
     async registerUser(arg0: string, arg1: string, arg2: string, arg3: Role, arg4: string, arg5: BloodGroup | null): Promise<Principal> {
         if (this.processError) {
             try {
-                const result = await this.actor.registerUser(arg0, arg1, arg2, to_candid_Role_n29(this._uploadFile, this._downloadFile, arg3), arg4, to_candid_opt_n31(this._uploadFile, this._downloadFile, arg5));
+                const result = await this.actor.registerUser(arg0, arg1, arg2, to_candid_Role_n32(this._uploadFile, this._downloadFile, arg3), arg4, to_candid_opt_n34(this._uploadFile, this._downloadFile, arg5));
                 return result;
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
-            const result = await this.actor.registerUser(arg0, arg1, arg2, to_candid_Role_n29(this._uploadFile, this._downloadFile, arg3), arg4, to_candid_opt_n31(this._uploadFile, this._downloadFile, arg5));
+            const result = await this.actor.registerUser(arg0, arg1, arg2, to_candid_Role_n32(this._uploadFile, this._downloadFile, arg3), arg4, to_candid_opt_n34(this._uploadFile, this._downloadFile, arg5));
             return result;
         }
     }
     async saveCallerUserProfile(arg0: UserProfile): Promise<void> {
         if (this.processError) {
             try {
-                const result = await this.actor.saveCallerUserProfile(to_candid_UserProfile_n32(this._uploadFile, this._downloadFile, arg0));
+                const result = await this.actor.saveCallerUserProfile(to_candid_UserProfile_n35(this._uploadFile, this._downloadFile, arg0));
                 return result;
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
-            const result = await this.actor.saveCallerUserProfile(to_candid_UserProfile_n32(this._uploadFile, this._downloadFile, arg0));
+            const result = await this.actor.saveCallerUserProfile(to_candid_UserProfile_n35(this._uploadFile, this._downloadFile, arg0));
             return result;
         }
     }
     async searchDonors(arg0: BloodGroup | null, arg1: string | null, arg2: boolean): Promise<Array<DonorProfile>> {
         if (this.processError) {
             try {
-                const result = await this.actor.searchDonors(to_candid_opt_n31(this._uploadFile, this._downloadFile, arg0), to_candid_opt_n34(this._uploadFile, this._downloadFile, arg1), arg2);
-                return from_candid_vec_n35(this._uploadFile, this._downloadFile, result);
+                const result = await this.actor.searchDonors(to_candid_opt_n34(this._uploadFile, this._downloadFile, arg0), to_candid_opt_n37(this._uploadFile, this._downloadFile, arg1), arg2);
+                return from_candid_vec_n38(this._uploadFile, this._downloadFile, result);
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
-            const result = await this.actor.searchDonors(to_candid_opt_n31(this._uploadFile, this._downloadFile, arg0), to_candid_opt_n34(this._uploadFile, this._downloadFile, arg1), arg2);
-            return from_candid_vec_n35(this._uploadFile, this._downloadFile, result);
+            const result = await this.actor.searchDonors(to_candid_opt_n34(this._uploadFile, this._downloadFile, arg0), to_candid_opt_n37(this._uploadFile, this._downloadFile, arg1), arg2);
+            return from_candid_vec_n38(this._uploadFile, this._downloadFile, result);
+        }
+    }
+    async searchDonorsPublic(arg0: BloodGroup | null, arg1: string | null, arg2: string | null, arg3: boolean): Promise<Array<DonorPublicInfo>> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.searchDonorsPublic(to_candid_opt_n34(this._uploadFile, this._downloadFile, arg0), to_candid_opt_n37(this._uploadFile, this._downloadFile, arg1), to_candid_opt_n37(this._uploadFile, this._downloadFile, arg2), arg3);
+                return from_candid_vec_n39(this._uploadFile, this._downloadFile, result);
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.searchDonorsPublic(to_candid_opt_n34(this._uploadFile, this._downloadFile, arg0), to_candid_opt_n37(this._uploadFile, this._downloadFile, arg1), to_candid_opt_n37(this._uploadFile, this._downloadFile, arg2), arg3);
+            return from_candid_vec_n39(this._uploadFile, this._downloadFile, result);
         }
     }
     async updateDonorAvailability(arg0: boolean): Promise<boolean> {
@@ -473,14 +535,28 @@ export class Backend implements backendInterface {
     async updateUser(arg0: User): Promise<void> {
         if (this.processError) {
             try {
-                const result = await this.actor.updateUser(to_candid_User_n36(this._uploadFile, this._downloadFile, arg0));
+                const result = await this.actor.updateUser(to_candid_User_n42(this._uploadFile, this._downloadFile, arg0));
                 return result;
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
-            const result = await this.actor.updateUser(to_candid_User_n36(this._uploadFile, this._downloadFile, arg0));
+            const result = await this.actor.updateUser(to_candid_User_n42(this._uploadFile, this._downloadFile, arg0));
+            return result;
+        }
+    }
+    async upgrade(): Promise<void> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.upgrade();
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.upgrade();
             return result;
         }
     }
@@ -491,8 +567,14 @@ function from_candid_BloodGroup_n13(_uploadFile: (file: ExternalBlob) => Promise
 function from_candid_BloodRequest_n16(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _BloodRequest): BloodRequest {
     return from_candid_record_n17(_uploadFile, _downloadFile, value);
 }
-function from_candid_DonorProfile_n26(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _DonorProfile): DonorProfile {
-    return from_candid_record_n27(_uploadFile, _downloadFile, value);
+function from_candid_DonorProfile_n21(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _DonorProfile): DonorProfile {
+    return from_candid_record_n22(_uploadFile, _downloadFile, value);
+}
+function from_candid_DonorPublicInfo_n40(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _DonorPublicInfo): DonorPublicInfo {
+    return from_candid_record_n41(_uploadFile, _downloadFile, value);
+}
+function from_candid_PublicUserEntry_n30(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _PublicUserEntry): PublicUserEntry {
+    return from_candid_record_n31(_uploadFile, _downloadFile, value);
 }
 function from_candid_Role_n10(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _Role): Role {
     return from_candid_variant_n11(_uploadFile, _downloadFile, value);
@@ -500,11 +582,11 @@ function from_candid_Role_n10(_uploadFile: (file: ExternalBlob) => Promise<Uint8
 function from_candid_UrgencyLevel_n18(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _UrgencyLevel): UrgencyLevel {
     return from_candid_variant_n19(_uploadFile, _downloadFile, value);
 }
-function from_candid_UserProfile_n21(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _UserProfile): UserProfile {
-    return from_candid_record_n22(_uploadFile, _downloadFile, value);
+function from_candid_UserProfile_n25(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _UserProfile): UserProfile {
+    return from_candid_record_n26(_uploadFile, _downloadFile, value);
 }
-function from_candid_UserRole_n23(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _UserRole): UserRole {
-    return from_candid_variant_n24(_uploadFile, _downloadFile, value);
+function from_candid_UserRole_n27(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _UserRole): UserRole {
+    return from_candid_variant_n28(_uploadFile, _downloadFile, value);
 }
 function from_candid_User_n8(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _User): User {
     return from_candid_record_n9(_uploadFile, _downloadFile, value);
@@ -512,14 +594,14 @@ function from_candid_User_n8(_uploadFile: (file: ExternalBlob) => Promise<Uint8A
 function from_candid_opt_n12(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [_BloodGroup]): BloodGroup | null {
     return value.length === 0 ? null : from_candid_BloodGroup_n13(_uploadFile, _downloadFile, value[0]);
 }
-function from_candid_opt_n20(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [_UserProfile]): UserProfile | null {
-    return value.length === 0 ? null : from_candid_UserProfile_n21(_uploadFile, _downloadFile, value[0]);
+function from_candid_opt_n20(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [_DonorProfile]): DonorProfile | null {
+    return value.length === 0 ? null : from_candid_DonorProfile_n21(_uploadFile, _downloadFile, value[0]);
 }
-function from_candid_opt_n25(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [_DonorProfile]): DonorProfile | null {
-    return value.length === 0 ? null : from_candid_DonorProfile_n26(_uploadFile, _downloadFile, value[0]);
-}
-function from_candid_opt_n28(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [bigint]): bigint | null {
+function from_candid_opt_n23(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [bigint]): bigint | null {
     return value.length === 0 ? null : value[0];
+}
+function from_candid_opt_n24(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [_UserProfile]): UserProfile | null {
+    return value.length === 0 ? null : from_candid_UserProfile_n25(_uploadFile, _downloadFile, value[0]);
 }
 function from_candid_record_n17(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
     id: bigint;
@@ -558,6 +640,27 @@ function from_candid_record_n17(_uploadFile: (file: ExternalBlob) => Promise<Uin
     };
 }
 function from_candid_record_n22(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
+    userId: Principal;
+    lastDonationDate: [] | [bigint];
+    availability: boolean;
+    bloodGroup: _BloodGroup;
+    totalDonations: bigint;
+}): {
+    userId: Principal;
+    lastDonationDate?: bigint;
+    availability: boolean;
+    bloodGroup: BloodGroup;
+    totalDonations: bigint;
+} {
+    return {
+        userId: value.userId,
+        lastDonationDate: record_opt_to_undefined(from_candid_opt_n23(_uploadFile, _downloadFile, value.lastDonationDate)),
+        availability: value.availability,
+        bloodGroup: from_candid_BloodGroup_n13(_uploadFile, _downloadFile, value.bloodGroup),
+        totalDonations: value.totalDonations
+    };
+}
+function from_candid_record_n26(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
     city: string;
     name: string;
     role: _Role;
@@ -581,25 +684,52 @@ function from_candid_record_n22(_uploadFile: (file: ExternalBlob) => Promise<Uin
         phone: value.phone
     };
 }
-function from_candid_record_n27(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
+function from_candid_record_n31(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
+    city: string;
+    name: string;
+    role: _Role;
+    bloodGroup: [] | [_BloodGroup];
+}): {
+    city: string;
+    name: string;
+    role: Role;
+    bloodGroup?: BloodGroup;
+} {
+    return {
+        city: value.city,
+        name: value.name,
+        role: from_candid_Role_n10(_uploadFile, _downloadFile, value.role),
+        bloodGroup: record_opt_to_undefined(from_candid_opt_n12(_uploadFile, _downloadFile, value.bloodGroup))
+    };
+}
+function from_candid_record_n41(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
+    city: string;
     userId: Principal;
+    name: string;
     lastDonationDate: [] | [bigint];
     availability: boolean;
     bloodGroup: _BloodGroup;
     totalDonations: bigint;
+    phone: string;
 }): {
+    city: string;
     userId: Principal;
+    name: string;
     lastDonationDate?: bigint;
     availability: boolean;
     bloodGroup: BloodGroup;
     totalDonations: bigint;
+    phone: string;
 } {
     return {
+        city: value.city,
         userId: value.userId,
-        lastDonationDate: record_opt_to_undefined(from_candid_opt_n28(_uploadFile, _downloadFile, value.lastDonationDate)),
+        name: value.name,
+        lastDonationDate: record_opt_to_undefined(from_candid_opt_n23(_uploadFile, _downloadFile, value.lastDonationDate)),
         availability: value.availability,
         bloodGroup: from_candid_BloodGroup_n13(_uploadFile, _downloadFile, value.bloodGroup),
-        totalDonations: value.totalDonations
+        totalDonations: value.totalDonations,
+        phone: value.phone
     };
 }
 function from_candid_record_n9(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
@@ -682,7 +812,7 @@ function from_candid_variant_n19(_uploadFile: (file: ExternalBlob) => Promise<Ui
 }): UrgencyLevel {
     return "low" in value ? UrgencyLevel.low : "high" in value ? UrgencyLevel.high : "critical" in value ? UrgencyLevel.critical : "medium" in value ? UrgencyLevel.medium : value;
 }
-function from_candid_variant_n24(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
+function from_candid_variant_n28(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
     admin: null;
 } | {
     user: null;
@@ -694,8 +824,14 @@ function from_candid_variant_n24(_uploadFile: (file: ExternalBlob) => Promise<Ui
 function from_candid_vec_n15(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: Array<_BloodRequest>): Array<BloodRequest> {
     return value.map((x)=>from_candid_BloodRequest_n16(_uploadFile, _downloadFile, x));
 }
-function from_candid_vec_n35(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: Array<_DonorProfile>): Array<DonorProfile> {
-    return value.map((x)=>from_candid_DonorProfile_n26(_uploadFile, _downloadFile, x));
+function from_candid_vec_n29(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: Array<_PublicUserEntry>): Array<PublicUserEntry> {
+    return value.map((x)=>from_candid_PublicUserEntry_n30(_uploadFile, _downloadFile, x));
+}
+function from_candid_vec_n38(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: Array<_DonorProfile>): Array<DonorProfile> {
+    return value.map((x)=>from_candid_DonorProfile_n21(_uploadFile, _downloadFile, x));
+}
+function from_candid_vec_n39(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: Array<_DonorPublicInfo>): Array<DonorPublicInfo> {
+    return value.map((x)=>from_candid_DonorPublicInfo_n40(_uploadFile, _downloadFile, x));
 }
 function from_candid_vec_n7(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: Array<_User>): Array<User> {
     return value.map((x)=>from_candid_User_n8(_uploadFile, _downloadFile, x));
@@ -703,28 +839,28 @@ function from_candid_vec_n7(_uploadFile: (file: ExternalBlob) => Promise<Uint8Ar
 function to_candid_BloodGroup_n3(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: BloodGroup): _BloodGroup {
     return to_candid_variant_n4(_uploadFile, _downloadFile, value);
 }
-function to_candid_Role_n29(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: Role): _Role {
-    return to_candid_variant_n30(_uploadFile, _downloadFile, value);
+function to_candid_Role_n32(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: Role): _Role {
+    return to_candid_variant_n33(_uploadFile, _downloadFile, value);
 }
 function to_candid_UrgencyLevel_n5(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: UrgencyLevel): _UrgencyLevel {
     return to_candid_variant_n6(_uploadFile, _downloadFile, value);
 }
-function to_candid_UserProfile_n32(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: UserProfile): _UserProfile {
-    return to_candid_record_n33(_uploadFile, _downloadFile, value);
+function to_candid_UserProfile_n35(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: UserProfile): _UserProfile {
+    return to_candid_record_n36(_uploadFile, _downloadFile, value);
 }
 function to_candid_UserRole_n1(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: UserRole): _UserRole {
     return to_candid_variant_n2(_uploadFile, _downloadFile, value);
 }
-function to_candid_User_n36(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: User): _User {
-    return to_candid_record_n37(_uploadFile, _downloadFile, value);
+function to_candid_User_n42(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: User): _User {
+    return to_candid_record_n43(_uploadFile, _downloadFile, value);
 }
-function to_candid_opt_n31(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: BloodGroup | null): [] | [_BloodGroup] {
+function to_candid_opt_n34(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: BloodGroup | null): [] | [_BloodGroup] {
     return value === null ? candid_none() : candid_some(to_candid_BloodGroup_n3(_uploadFile, _downloadFile, value));
 }
-function to_candid_opt_n34(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: string | null): [] | [string] {
+function to_candid_opt_n37(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: string | null): [] | [string] {
     return value === null ? candid_none() : candid_some(value);
 }
-function to_candid_record_n33(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
+function to_candid_record_n36(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
     city: string;
     name: string;
     role: Role;
@@ -742,13 +878,13 @@ function to_candid_record_n33(_uploadFile: (file: ExternalBlob) => Promise<Uint8
     return {
         city: value.city,
         name: value.name,
-        role: to_candid_Role_n29(_uploadFile, _downloadFile, value.role),
+        role: to_candid_Role_n32(_uploadFile, _downloadFile, value.role),
         email: value.email,
         bloodGroup: value.bloodGroup ? candid_some(to_candid_BloodGroup_n3(_uploadFile, _downloadFile, value.bloodGroup)) : candid_none(),
         phone: value.phone
     };
 }
-function to_candid_record_n37(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
+function to_candid_record_n43(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
     id: Principal;
     city: string;
     name: string;
@@ -774,7 +910,7 @@ function to_candid_record_n37(_uploadFile: (file: ExternalBlob) => Promise<Uint8
         city: value.city,
         name: value.name,
         createdAt: value.createdAt,
-        role: to_candid_Role_n29(_uploadFile, _downloadFile, value.role),
+        role: to_candid_Role_n32(_uploadFile, _downloadFile, value.role),
         email: value.email,
         isVerified: value.isVerified,
         bloodGroup: value.bloodGroup ? candid_some(to_candid_BloodGroup_n3(_uploadFile, _downloadFile, value.bloodGroup)) : candid_none(),
@@ -796,7 +932,7 @@ function to_candid_variant_n2(_uploadFile: (file: ExternalBlob) => Promise<Uint8
         guest: null
     } : value;
 }
-function to_candid_variant_n30(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: Role): {
+function to_candid_variant_n33(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: Role): {
     ngo: null;
 } | {
     hospital: null;

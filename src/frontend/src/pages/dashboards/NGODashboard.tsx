@@ -36,38 +36,7 @@ const statusColors = {
   },
 };
 
-const initialCamps: Camp[] = [
-  {
-    id: "CAMP-001",
-    name: "Chennai Blood Drive",
-    location: "Anna Nagar Community Hall",
-    date: "2026-03-20",
-    expectedDonors: 100,
-    organizer: "Red Cross Chennai",
-    contact: "+91 44 1234 5678",
-    status: "upcoming",
-  },
-  {
-    id: "CAMP-002",
-    name: "IIT Madras Donation Day",
-    location: "IIT Madras Main Gate",
-    date: "2026-03-10",
-    expectedDonors: 200,
-    organizer: "IIT Student Council",
-    contact: "+91 44 9876 5432",
-    status: "active",
-  },
-  {
-    id: "CAMP-003",
-    name: "Pongal Donation Drive",
-    location: "T Nagar",
-    date: "2026-01-15",
-    expectedDonors: 150,
-    organizer: "NGO Alliance",
-    contact: "+91 44 5678 1234",
-    status: "completed",
-  },
-];
+const initialCamps: Camp[] = [];
 
 export function NGODashboard() {
   const [camps, setCamps] = useState<Camp[]>(initialCamps);
@@ -296,6 +265,18 @@ export function NGODashboard() {
       )}
 
       {/* Camps List */}
+      {camps.length === 0 && (
+        <div
+          className="rounded-xl card-dark p-8 text-center mb-10"
+          data-ocid="ngo.camps.empty_state"
+        >
+          <div className="text-3xl mb-2">🏕️</div>
+          <p className="text-muted-foreground text-sm">
+            No camps created yet. Click "New Camp" to create your first donation
+            camp.
+          </p>
+        </div>
+      )}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-10">
         {camps.map((camp, i) => {
           const sc = statusColors[camp.status];

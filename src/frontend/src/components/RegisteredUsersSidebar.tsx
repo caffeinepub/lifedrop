@@ -1,10 +1,8 @@
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Droplets, Users } from "lucide-react";
-import { useEffect, useState } from "react";
-import {
-  type RegisteredUserEntry,
-  getRegisteredUsers,
-} from "../contexts/AppContext";
+import { useQueryClient } from "@tanstack/react-query";
+import { Droplets, Loader2, Users } from "lucide-react";
+import { useEffect } from "react";
+import { usePublicUserList } from "../hooks/useQueries";
 
 const roleConfig: Record<
   string,
@@ -65,32 +63,50 @@ function getRoleConfig(role: string) {
   );
 }
 
-function formatRelativeTime(iso: string): string {
-  try {
-    const diff = Date.now() - new Date(iso).getTime();
-    const mins = Math.floor(diff / 60000);
-    if (mins < 1) return "just now";
-    if (mins < 60) return `${mins}m ago`;
-    const hrs = Math.floor(mins / 60);
-    if (hrs < 24) return `${hrs}h ago`;
-    return `${Math.floor(hrs / 24)}d ago`;
-  } catch {
-    return "";
-  }
+// Map backend blood group enum values to display labels
+const bloodGroupLabels: Record<string, string> = {
+  A_Positive: "A+",
+  A_Negative: "A−",
+  B_Positive: "B+",
+  B_Negative: "B−",
+  AB_Positive: "AB+",
+  AB_Negative: "AB−",
+  O_Positive: "O+",
+  O_Negative: "O−",
+};
+
+function normalizeBloodGroup(bg: unknown): string | undefined {
+  if (!bg) return undefined;
+  const key =
+    typeof bg === "string"
+      ? bg
+      : bg && typeof bg === "object"
+        ? (Object.keys(bg)[0] ?? "")
+        : "";
+  return bloodGroupLabels[key] ?? (key || undefined);
+}
+
+function normalizeRole(role: unknown): string {
+  if (typeof role === "string") return role;
+  if (role && typeof role === "object")
+    return Object.keys(role)[0] ?? "unknown";
+  return "unknown";
 }
 
 export function RegisteredUsersSidebar() {
-  const [users, setUsers] = useState<RegisteredUserEntry[]>(() =>
-    getRegisteredUsers(),
-  );
+  const { data: users = [], isLoading } = usePublicUserList();
+  const queryClient = useQueryClient();
 
   // Refresh when a new user registers (custom event)
   useEffect(() => {
-    const handler = () => setUsers(getRegisteredUsers());
+    const handler = () => {
+      void queryClient.invalidateQueries({ queryKey: ["publicUserList"] });
+      void queryClient.invalidateQueries({ queryKey: ["totalUsers"] });
+    };
     window.addEventListener("lifedrop_user_registered", handler);
     return () =>
       window.removeEventListener("lifedrop_user_registered", handler);
-  }, []);
+  }, [queryClient]);
 
   return (
     <aside
@@ -122,11 +138,18 @@ export function RegisteredUsersSidebar() {
               Registered
             </h3>
             <p className="text-xs" style={{ color: "oklch(var(--neon-red))" }}>
-              {users.length} {users.length === 1 ? "user" : "users"}
+              {isLoading
+                ? "..."
+                : `${users.length} ${users.length === 1 ? "user" : "users"}`}
             </p>
           </div>
         </div>
-        {users.length > 0 && (
+        {isLoading ? (
+          <Loader2
+            className="h-3.5 w-3.5 animate-spin"
+            style={{ color: "oklch(var(--neon-red) / 0.6)" }}
+          />
+        ) : users.length > 0 ? (
           <div
             className="flex items-center gap-1 text-xs px-1.5 py-0.5 rounded-full"
             style={{
@@ -141,12 +164,25 @@ export function RegisteredUsersSidebar() {
             />
             Live
           </div>
-        )}
+        ) : null}
       </div>
 
       {/* Scrollable list */}
       <ScrollArea className="flex-1 px-3 py-3" data-ocid="sidebar.list">
-        {users.length === 0 ? (
+        {isLoading ? (
+          <div
+            className="flex flex-col items-center justify-center py-10 gap-3"
+            data-ocid="sidebar.loading_state"
+          >
+            <Loader2
+              className="h-6 w-6 animate-spin"
+              style={{ color: "oklch(var(--neon-red) / 0.5)" }}
+            />
+            <p className="text-xs text-muted-foreground/60 text-center">
+              Loading users...
+            </p>
+          </div>
+        ) : users.length === 0 ? (
           <div
             className="flex flex-col items-center justify-center py-10 gap-3"
             data-ocid="sidebar.empty_state"
@@ -172,11 +208,13 @@ export function RegisteredUsersSidebar() {
         ) : (
           <div className="space-y-2">
             {users.map((user, idx) => {
-              const rc = getRoleConfig(user.role);
+              const roleStr = normalizeRole(user.role);
+              const rc = getRoleConfig(roleStr);
+              const displayBloodGroup = normalizeBloodGroup(user.bloodGroup);
               const ocidIndex = idx + 1;
               return (
                 <div
-                  key={`${user.name}-${user.registeredAt}`}
+                  key={`${user.name}-${roleStr}-${idx}`}
                   className="group rounded-lg p-3 transition-all hover:scale-[1.01]"
                   style={{
                     background: "oklch(0.13 0.005 20 / 0.8)",
@@ -218,7 +256,7 @@ export function RegisteredUsersSidebar() {
                           </span>
                         )}
                       </div>
-                      {user.bloodGroup && (
+                      {displayBloodGroup && (
                         <div
                           className="mt-1 text-xs font-mono font-bold inline-block px-1.5 py-px rounded"
                           style={{
@@ -226,12 +264,9 @@ export function RegisteredUsersSidebar() {
                             color: "oklch(var(--neon-red))",
                           }}
                         >
-                          {user.bloodGroup}
+                          {displayBloodGroup}
                         </div>
                       )}
-                      <div className="text-xs text-muted-foreground/50 mt-1">
-                        {formatRelativeTime(user.registeredAt)}
-                      </div>
                     </div>
                   </div>
                 </div>
@@ -246,7 +281,7 @@ export function RegisteredUsersSidebar() {
         className="px-4 py-3 border-t text-xs text-muted-foreground/50 text-center"
         style={{ borderColor: "oklch(var(--neon-red) / 0.08)" }}
       >
-        Session registrations
+        Live from blockchain
       </div>
     </aside>
   );
