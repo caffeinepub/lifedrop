@@ -9,7 +9,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { AlertTriangle, Loader2, Plus } from "lucide-react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { useApp } from "../../contexts/AppContext";
 
@@ -51,8 +51,29 @@ const initialUnits: BloodUnit[] = [];
 
 const bloodGroupOptions = ["A+", "A−", "B+", "B−", "AB+", "AB−", "O+", "O−"];
 
+type StoredBloodBank = {
+  bankName?: string;
+  licenseNumber?: string;
+  contactPerson?: string;
+  address?: string;
+  storageCapacity?: string;
+  email?: string;
+  phone?: string;
+};
+
 export function BloodBankDashboard() {
   const { userProfile } = useApp();
+
+  // Read blood bank-specific fields saved during registration
+  const storedBloodBank = useMemo((): StoredBloodBank | null => {
+    try {
+      const raw = localStorage.getItem("lifedrop_profile_bloodBank");
+      return raw ? (JSON.parse(raw) as StoredBloodBank) : null;
+    } catch {
+      return null;
+    }
+  }, []);
+
   const [units, setUnits] = useState<BloodUnit[]>(
     initialUnits.map((u) => ({ ...u, status: getStatus(u.expiryDate) })),
   );
@@ -97,9 +118,45 @@ export function BloodBankDashboard() {
         Blood Bank{" "}
         <span style={{ color: "oklch(var(--neon-red))" }}>Dashboard</span>
       </h1>
-      <p className="text-muted-foreground mb-8">
-        Welcome, {userProfile?.name ?? "Blood Bank"}
+      <p className="text-muted-foreground mb-2">
+        Welcome,{" "}
+        {storedBloodBank?.bankName || userProfile?.name || "Blood Bank"}
       </p>
+      {/* Profile info strip */}
+      <div className="flex flex-wrap gap-4 mb-8 text-sm text-muted-foreground">
+        {(storedBloodBank?.phone || userProfile?.phone) && (
+          <span className="flex items-center gap-1.5">
+            📞{" "}
+            <span className="font-semibold text-foreground">
+              {storedBloodBank?.phone || userProfile?.phone}
+            </span>
+          </span>
+        )}
+        {(storedBloodBank?.email || userProfile?.email) && (
+          <span className="flex items-center gap-1.5">
+            ✉️{" "}
+            <span className="text-foreground">
+              {storedBloodBank?.email || userProfile?.email}
+            </span>
+          </span>
+        )}
+        {storedBloodBank?.licenseNumber && (
+          <span className="flex items-center gap-1.5">
+            🪪{" "}
+            <span className="font-mono text-foreground">
+              {storedBloodBank.licenseNumber}
+            </span>
+          </span>
+        )}
+        {storedBloodBank?.storageCapacity && (
+          <span className="flex items-center gap-1.5">
+            🗄️ Capacity:{" "}
+            <span className="font-semibold text-foreground">
+              {Number(storedBloodBank.storageCapacity).toLocaleString()} ml
+            </span>
+          </span>
+        )}
+      </div>
 
       {/* Summary cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">

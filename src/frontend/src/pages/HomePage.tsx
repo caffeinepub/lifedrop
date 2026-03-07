@@ -18,7 +18,11 @@ import {
 import { useMemo } from "react";
 import { useApp } from "../contexts/AppContext";
 import { useActor } from "../hooks/useActor";
-import { useAllDonors, useTotalUsers } from "../hooks/useQueries";
+import {
+  countRoleInList,
+  useAllDonors,
+  usePublicUserList,
+} from "../hooks/useQueries";
 
 const bloodGroupKeys = [
   { key: "A_Positive", label: "A+" },
@@ -38,13 +42,9 @@ function useStats() {
     queryFn: async () => {
       if (!actor) return null;
       try {
-        const [requests, hospitals] = await Promise.all([
-          actor.getBloodRequests().catch(() => []),
-          actor.getAllHospitals().catch(() => []),
-        ]);
+        const requests = await actor.getBloodRequests().catch(() => []);
         return {
           requests: requests.length,
-          hospitals: hospitals.length,
         };
       } catch {
         return null;
@@ -86,13 +86,18 @@ export function HomePage() {
   const { t } = useApp();
   const { data: backendStats } = useStats();
   const { data: allDonors } = useAllDonors();
-  const { data: totalUsersRaw } = useTotalUsers();
+  const { data: publicUsers = [] } = usePublicUserList();
 
-  // Real donor count from backend
-  const donorCount = allDonors?.length ?? 0;
-  // Real total users from backend (bigint → number)
-  const totalUsersCount =
-    totalUsersRaw !== undefined ? Number(totalUsersRaw) : 0;
+  // All counts derived from publicUserList (no auth required, always accurate)
+  const donorCount = useMemo(
+    () => countRoleInList(publicUsers, "donor"),
+    [publicUsers],
+  );
+  const hospitalCount = useMemo(
+    () => countRoleInList(publicUsers, "hospital"),
+    [publicUsers],
+  );
+  const totalUsersCount = publicUsers.length;
 
   const stats = [
     {
@@ -107,7 +112,7 @@ export function HomePage() {
     },
     {
       label: "Partner Hospitals",
-      value: backendStats ? String(backendStats.hospitals) : "0",
+      value: String(hospitalCount),
       icon: <Building2 className="h-5 w-5" />,
     },
     {
@@ -507,8 +512,8 @@ export function HomePage() {
                 },
                 {
                   label: "Hospitals",
-                  value: backendStats ? String(backendStats.hospitals) : "0",
-                  icon: "🤝",
+                  value: String(hospitalCount),
+                  icon: "🏨",
                 },
               ].map((item) => (
                 <div

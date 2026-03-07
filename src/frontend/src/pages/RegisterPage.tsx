@@ -29,7 +29,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { BloodGroup, Role } from "../backend.d";
 import { addRegisteredUser, useApp } from "../contexts/AppContext";
-import { useActor } from "../hooks/useActor";
+import { useDeviceActor } from "../hooks/useDeviceActor";
 
 const bloodGroupOptions = [
   { value: BloodGroup.A_Positive, label: "A+" },
@@ -72,6 +72,12 @@ interface BaseRegisterResult {
   bloodGroup?: BloodGroup;
   email?: string;
   phone?: string;
+}
+
+interface ExtraRegisterData {
+  hospitalName?: string;
+  licenseNumber?: string;
+  address?: string;
 }
 
 // ─── Shared status feedback component ────────────────────────
@@ -133,8 +139,8 @@ function StatusFeedback({
               {status === "error"
                 ? errorMsg || "Registration failed"
                 : status === "success"
-                  ? "Registered! Redirecting..."
-                  : "Creating your profile..."}
+                  ? "Registered! Taking you to your dashboard..."
+                  : "Creating your profile on the blockchain..."}
             </span>
           </div>
         </motion.div>
@@ -223,14 +229,17 @@ function RoleHeader({
 
 function useRegisterLogic(role: Role) {
   const navigate = useNavigate();
-  const { actor, isFetching: isActorFetching } = useActor();
+  const { actor, isFetching: isActorFetching } = useDeviceActor();
   const { setUserProfile } = useApp();
   const [status, setStatus] = useState<SubmitStatus>("idle");
   const [errorMsg, setErrorMsg] = useState("");
 
   const isBusy = status === "registering" || isActorFetching;
 
-  const submit = async (data: BaseRegisterResult) => {
+  const submit = async (
+    data: BaseRegisterResult,
+    extra?: ExtraRegisterData,
+  ) => {
     if (!actor) {
       toast.error(
         "Connecting to backend... Please wait a moment and try again.",
@@ -243,6 +252,8 @@ function useRegisterLogic(role: Role) {
 
     try {
       // Register user — pass actual email and phone to backend
+      // Using device actor (unique Ed25519 keypair per browser) so each person
+      // gets a unique principal — fixing the "all anonymous = same principal" bug
       await actor.registerUser(
         data.name,
         data.email ?? "",
@@ -251,6 +262,38 @@ function useRegisterLogic(role: Role) {
         data.city,
         data.bloodGroup ?? null,
       );
+
+      // Always call saveCallerUserProfile after registerUser to ensure phone/name/city
+      // are updated even if the caller was already registered (idempotent update)
+      try {
+        await actor.saveCallerUserProfile({
+          name: data.name,
+          email: data.email ?? "",
+          phone: data.phone ?? "",
+          role,
+          city: data.city,
+          bloodGroup: data.bloodGroup ?? undefined,
+        });
+      } catch {
+        // Non-fatal — profile may not exist yet for new users, that's fine
+      }
+
+      // If hospital, also update hospital profile with license/name/address
+      if (
+        role === Role.hospital &&
+        extra?.licenseNumber &&
+        extra?.hospitalName
+      ) {
+        try {
+          await actor.updateHospitalProfile(
+            extra.licenseNumber,
+            extra.hospitalName,
+            extra.address ?? data.city,
+          );
+        } catch {
+          // Non-fatal: profile registered, hospital details update failed silently
+        }
+      }
 
       const profile = {
         name: data.name,
@@ -267,6 +310,7 @@ function useRegisterLogic(role: Role) {
         ? (bloodGroupLabels[data.bloodGroup] ?? data.bloodGroup)
         : undefined;
 
+      // Only call addRegisteredUser on true first-time registration
       addRegisteredUser({
         name: data.name,
         role,
@@ -317,7 +361,7 @@ function useRegisterLogic(role: Role) {
       const message = err instanceof Error ? err.message : String(err);
       const lowerMsg = message.toLowerCase();
 
-      // Only redirect if they're genuinely already registered
+      // Already registered — idempotent, treat as success (do NOT call addRegisteredUser again)
       if (
         lowerMsg.includes("already") ||
         lowerMsg.includes("registered") ||
@@ -332,18 +376,20 @@ function useRegisterLogic(role: Role) {
           bloodGroup: data.bloodGroup,
         };
         setUserProfile(profile);
-        toast.info("Already registered! Redirecting to your dashboard...");
+        toast.success("Welcome back! You're already registered.");
         setStatus("success");
         setTimeout(() => {
           void navigate({ to: roleDashboardMap[role] ?? "/dashboard" });
-        }, 1000);
+        }, 1200);
       } else {
         // Real error — canister stopped, network issue, etc.
         setStatus("error");
         const friendlyMsg =
           lowerMsg.includes("canister") || lowerMsg.includes("stopped")
             ? "Backend is temporarily unavailable. Please try again in a moment."
-            : "Registration failed. Please try again.";
+            : lowerMsg.includes("network") || lowerMsg.includes("fetch")
+              ? "Network error. Please check your connection and try again."
+              : "Registration failed. Please try again.";
         setErrorMsg(friendlyMsg);
         toast.error(friendlyMsg);
         setTimeout(() => setStatus("idle"), 6000);
@@ -791,14 +837,21 @@ function HospitalForm() {
     );
 
     const displayName = contactPerson || hospitalName;
-    await submit({
-      name: displayName,
-      role: Role.hospital,
-      city,
-      bloodGroup: undefined,
-      email: email || undefined,
-      phone,
-    });
+    await submit(
+      {
+        name: displayName,
+        role: Role.hospital,
+        city,
+        bloodGroup: undefined,
+        email: email || undefined,
+        phone,
+      },
+      {
+        hospitalName,
+        licenseNumber,
+        address,
+      },
+    );
   };
 
   return (

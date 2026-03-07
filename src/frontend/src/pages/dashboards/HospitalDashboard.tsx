@@ -9,7 +9,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Building2, CheckCircle, Clock, Minus, Plus } from "lucide-react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { useApp } from "../../contexts/AppContext";
 
@@ -51,8 +51,28 @@ function getStatus(qty: number): BloodInventory["status"] {
   return "good";
 }
 
+type StoredHospital = {
+  hospitalName?: string;
+  licenseNumber?: string;
+  contactPerson?: string;
+  address?: string;
+  email?: string;
+  phone?: string;
+};
+
 export function HospitalDashboard() {
   const { userProfile } = useApp();
+
+  // Read hospital-specific fields saved during registration
+  const storedHospital = useMemo((): StoredHospital | null => {
+    try {
+      const raw = localStorage.getItem("lifedrop_profile_hospital");
+      return raw ? (JSON.parse(raw) as StoredHospital) : null;
+    } catch {
+      return null;
+    }
+  }, []);
+
   const [inventory, setInventory] = useState<BloodInventory[]>([]);
   const [adjustAmount, setAdjustAmount] = useState<Record<string, string>>({});
 
@@ -132,7 +152,9 @@ export function HospitalDashboard() {
               </div>
               <div>
                 <h2 className="font-semibold">
-                  {userProfile?.name ?? "Hospital Name"}
+                  {storedHospital?.hospitalName ||
+                    userProfile?.name ||
+                    "Hospital Name"}
                 </h2>
                 <p className="text-sm text-muted-foreground">
                   {userProfile?.city ?? "City"}
@@ -177,21 +199,43 @@ export function HospitalDashboard() {
                   {userProfile?.city ?? "—"}
                 </span>
               </div>
+              {storedHospital?.licenseNumber && (
+                <div
+                  className="flex justify-between py-2 border-b"
+                  style={{ borderColor: "oklch(var(--border))" }}
+                >
+                  <span className="text-muted-foreground">License</span>
+                  <span className="font-mono text-xs truncate max-w-[120px]">
+                    {storedHospital.licenseNumber}
+                  </span>
+                </div>
+              )}
               <div
                 className="flex justify-between py-2 border-b"
                 style={{ borderColor: "oklch(var(--border))" }}
               >
-                <span className="text-muted-foreground">Contact</span>
+                <span className="text-muted-foreground">Phone</span>
                 <span className="font-semibold text-xs truncate max-w-[120px]">
-                  {userProfile?.phone ?? "—"}
+                  {storedHospital?.phone || userProfile?.phone || "—"}
                 </span>
               </div>
-              <div className="flex justify-between py-2">
+              <div
+                className="flex justify-between py-2 border-b"
+                style={{ borderColor: "oklch(var(--border))" }}
+              >
                 <span className="text-muted-foreground">Email</span>
                 <span className="text-xs truncate max-w-[120px]">
-                  {userProfile?.email ?? "—"}
+                  {storedHospital?.email || userProfile?.email || "—"}
                 </span>
               </div>
+              {storedHospital?.address && (
+                <div className="flex justify-between py-2">
+                  <span className="text-muted-foreground">Address</span>
+                  <span className="text-xs text-right max-w-[140px] leading-tight">
+                    {storedHospital.address}
+                  </span>
+                </div>
+              )}
             </div>
           </div>
 

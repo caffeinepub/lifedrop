@@ -19,13 +19,16 @@ import {
   Phone,
   Search,
   User,
+  Users,
+  Wifi,
+  WifiOff,
   XCircle,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useMemo, useState } from "react";
 import type { DonorPublicInfo } from "../backend.d";
 import { BloodGroup } from "../backend.d";
 import { useActor } from "../hooks/useActor";
-import { useSearchDonorsPublic } from "../hooks/useQueries";
+import { useAllDonorsList } from "../hooks/useQueries";
 
 const bloodGroupOptions = [
   { value: "all", label: "All Blood Groups" },
@@ -77,21 +80,21 @@ function DonorCard({
   return (
     <div
       data-ocid={`search.donor.item.${index}`}
-      className="relative rounded-2xl overflow-hidden transition-all duration-300 hover:-translate-y-1"
+      className="relative rounded-2xl overflow-hidden transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl"
       style={{
         background:
           "linear-gradient(145deg, oklch(0.14 0.01 0) 0%, oklch(0.12 0.02 25 / 0.6) 100%)",
-        border: "1px solid oklch(var(--neon-red) / 0.18)",
+        border: "1px solid oklch(var(--neon-red) / 0.2)",
         boxShadow:
           "0 4px 24px oklch(var(--neon-red) / 0.06), inset 0 1px 0 oklch(1 0 0 / 0.04)",
       }}
     >
-      {/* Top accent stripe */}
+      {/* Top glow line */}
       <div
-        className="absolute top-0 left-0 right-0 h-0.5"
+        className="absolute top-0 left-0 right-0 h-px"
         style={{
           background:
-            "linear-gradient(90deg, transparent, oklch(var(--neon-red) / 0.6), transparent)",
+            "linear-gradient(90deg, transparent, oklch(var(--neon-red) / 0.7), transparent)",
         }}
       />
 
@@ -130,8 +133,8 @@ function DonorCard({
             style={{
               backgroundColor: "oklch(var(--neon-red) / 0.15)",
               color: "oklch(var(--neon-red))",
-              border: "1px solid oklch(var(--neon-red) / 0.3)",
-              boxShadow: "0 0 10px oklch(var(--neon-red) / 0.12)",
+              border: "1px solid oklch(var(--neon-red) / 0.35)",
+              boxShadow: "0 0 14px oklch(var(--neon-red) / 0.2)",
             }}
           >
             {bg}
@@ -279,64 +282,34 @@ export function SearchPage() {
   const [bloodGroup, setBloodGroup] = useState("all");
   const [city, setCity] = useState("");
   const [availableOnly, setAvailableOnly] = useState(false);
-  const [searched, setSearched] = useState(false);
-  const [searchKey, setSearchKey] = useState(0);
-  const [searchParams, setSearchParams] = useState<{
-    bg: BloodGroup | null;
-    city: string | null;
-    avail: boolean;
-  } | null>(null);
-  const { actor } = useActor();
-  const [actorReady, setActorReady] = useState(false);
 
-  // Wait until actor is ready before enabling search
-  useEffect(() => {
-    if (actor) setActorReady(true);
-  }, [actor]);
+  const { actor, isFetching: isActorFetching } = useActor();
+  const isConnected = !!actor && !isActorFetching;
 
-  const {
-    data: donors,
-    isLoading,
-    isFetching,
-  } = useSearchDonorsPublic(
-    searchParams?.bg ?? null,
-    searchParams?.city ?? null,
-    null,
-    searchParams?.avail ?? false,
-    searched && actorReady,
-    searchKey,
-  );
+  // Load ALL donors on page open — no button press needed
+  const { data: allDonors = [], isLoading: isLoadingAll } = useAllDonorsList();
 
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!actor) {
-      return;
-    }
-    setSearched(true);
-    setSearchKey((k) => k + 1);
-    setSearchParams({
-      bg: bloodGroup === "all" ? null : (bloodGroup as BloodGroup),
-      city: city.trim() || null,
-      avail: availableOnly,
-    });
-  };
+  // Client-side filter — instant, no network call
+  const displayDonors = useMemo(() => {
+    let list: DonorPublicInfo[] = allDonors;
+    if (bloodGroup !== "all")
+      list = list.filter((d) => d.bloodGroup === bloodGroup);
+    if (city.trim())
+      list = list.filter((d) =>
+        d.city.toLowerCase().includes(city.trim().toLowerCase()),
+      );
+    if (availableOnly) list = list.filter((d) => d.availability);
+    return list;
+  }, [allDonors, bloodGroup, city, availableOnly]);
 
-  const handleSearchAll = () => {
-    if (!actor) return;
-    setSearched(true);
-    setSearchKey((k) => k + 1);
-    setSearchParams({
-      bg: null,
-      city: null,
-      avail: false,
-    });
+  const hasActiveFilters =
+    bloodGroup !== "all" || city.trim() !== "" || availableOnly;
+
+  const handleClearFilters = () => {
     setBloodGroup("all");
     setCity("");
     setAvailableOnly(false);
   };
-
-  const showLoading = (isLoading || isFetching) && searched;
-  const displayDonors: DonorPublicInfo[] = donors ?? [];
 
   return (
     <main className="container mx-auto px-4 py-12">
@@ -356,15 +329,82 @@ export function SearchPage() {
         <h1 className="font-display text-4xl font-black mb-3">
           Find Blood Donors
         </h1>
-        <p className="text-muted-foreground">
-          Search by blood group, city, or availability
+        <p className="text-muted-foreground mb-3">
+          Search by blood group, city, or availability — results update
+          instantly
         </p>
+
+        {/* Connection status indicator */}
+        <div className="flex items-center justify-center gap-2 text-xs">
+          {isActorFetching ? (
+            <span
+              className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full"
+              style={{
+                backgroundColor: "oklch(0.5 0.1 60 / 0.1)",
+                color: "oklch(0.65 0.15 60)",
+                border: "1px solid oklch(0.5 0.1 60 / 0.3)",
+              }}
+            >
+              <Loader2 className="h-3 w-3 animate-spin" />
+              Connecting to blockchain...
+            </span>
+          ) : isConnected ? (
+            <span
+              className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full"
+              style={{
+                backgroundColor: "oklch(0.65 0.2 140 / 0.1)",
+                color: "oklch(0.65 0.2 140)",
+                border: "1px solid oklch(0.65 0.2 140 / 0.3)",
+              }}
+            >
+              <Wifi className="h-3 w-3" />
+              Connected — Live data
+            </span>
+          ) : (
+            <span
+              className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full"
+              style={{
+                backgroundColor: "oklch(0.5 0.15 25 / 0.1)",
+                color: "oklch(0.6 0.15 25)",
+                border: "1px solid oklch(0.5 0.15 25 / 0.3)",
+              }}
+            >
+              <WifiOff className="h-3 w-3" />
+              Not connected
+            </span>
+          )}
+        </div>
       </div>
 
-      {/* Search Form */}
-      <form
-        onSubmit={handleSearch}
-        className="max-w-3xl mx-auto mb-4 rounded-2xl p-6"
+      {/* Stats bar */}
+      {!isLoadingAll && allDonors.length > 0 && (
+        <div
+          className="max-w-3xl mx-auto mb-6 flex items-center justify-center gap-2 py-2 px-4 rounded-xl text-sm"
+          style={{
+            backgroundColor: "oklch(var(--neon-red) / 0.05)",
+            border: "1px solid oklch(var(--neon-red) / 0.15)",
+          }}
+        >
+          <Users
+            className="h-4 w-4"
+            style={{ color: "oklch(var(--neon-red))" }}
+          />
+          <span className="text-muted-foreground">
+            <span
+              className="font-bold text-base"
+              style={{ color: "oklch(var(--neon-red))" }}
+            >
+              {allDonors.length}
+            </span>{" "}
+            donor{allDonors.length !== 1 ? "s" : ""} registered on the
+            blockchain
+          </span>
+        </div>
+      )}
+
+      {/* Search / Filter Form */}
+      <div
+        className="max-w-3xl mx-auto mb-6 rounded-2xl p-6"
         style={{
           background:
             "linear-gradient(145deg, oklch(0.14 0.01 0) 0%, oklch(0.12 0.02 25 / 0.4) 100%)",
@@ -426,68 +466,55 @@ export function SearchPage() {
         {/* Action buttons */}
         <div className="flex flex-col sm:flex-row gap-3">
           <Button
-            type="submit"
+            type="button"
             className="flex-1 font-bold"
             data-ocid="search.submit.button"
-            disabled={!actorReady}
             style={{
               backgroundColor: "oklch(var(--neon-red))",
               color: "white",
-              boxShadow: actorReady
-                ? "0 0 16px oklch(var(--neon-red) / 0.3)"
-                : "none",
-              opacity: actorReady ? 1 : 0.6,
+              boxShadow: "0 0 16px oklch(var(--neon-red) / 0.3)",
             }}
           >
-            {actorReady ? (
-              <>
-                <Search className="h-4 w-4 mr-2" />
-                Search Donors
-              </>
-            ) : (
-              <>
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Connecting...
-              </>
-            )}
+            <Search className="h-4 w-4 mr-2" />
+            {hasActiveFilters
+              ? `Showing ${displayDonors.length} result${displayDonors.length !== 1 ? "s" : ""}`
+              : "Filter Results"}
           </Button>
-          <Button
-            type="button"
-            variant="outline"
-            className="font-semibold border-primary/40 hover:bg-primary/10"
-            data-ocid="search.all.button"
-            onClick={handleSearchAll}
-            disabled={!actorReady}
-          >
-            Search All Donors
-          </Button>
+          {hasActiveFilters && (
+            <Button
+              type="button"
+              variant="outline"
+              className="font-semibold border-primary/40 hover:bg-primary/10"
+              data-ocid="search.all.button"
+              onClick={handleClearFilters}
+            >
+              ✕ Clear Filters
+            </Button>
+          )}
         </div>
-      </form>
+      </div>
 
-      {/* Blockchain note */}
-      <p className="text-center text-xs text-muted-foreground mb-8 opacity-60">
-        Results are fetched directly from the blockchain.
-      </p>
-
-      {/* Loading state */}
-      {showLoading && (
+      {/* Loading state while fetching all donors */}
+      {isLoadingAll && (
         <div className="text-center py-12" data-ocid="search.loading_state">
           <Loader2
             className="h-8 w-8 animate-spin mx-auto mb-3"
             style={{ color: "oklch(var(--neon-red))" }}
           />
-          <p className="text-muted-foreground">Searching blockchain...</p>
+          <p className="text-muted-foreground">
+            Loading donors from blockchain...
+          </p>
         </div>
       )}
 
       {/* Results */}
-      {!showLoading && searched && (
+      {!isLoadingAll && (
         <>
           {/* Result summary */}
           {displayDonors.length > 0 && (
-            <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center justify-between mb-6 max-w-none">
               <p className="text-sm text-muted-foreground">
-                Found{" "}
+                {hasActiveFilters ? "Filtered to" : "Showing"}{" "}
                 <span
                   className="font-bold text-lg"
                   style={{ color: "oklch(var(--neon-red))" }}
@@ -495,6 +522,12 @@ export function SearchPage() {
                   {displayDonors.length}
                 </span>{" "}
                 donor{displayDonors.length !== 1 ? "s" : ""}
+                {hasActiveFilters && (
+                  <span className="text-muted-foreground/60">
+                    {" "}
+                    of {allDonors.length} total
+                  </span>
+                )}
               </p>
               <div
                 className="text-xs px-3 py-1 rounded-full font-medium"
@@ -504,7 +537,7 @@ export function SearchPage() {
                   border: "1px solid oklch(var(--neon-red) / 0.2)",
                 }}
               >
-                Live data
+                ⚡ Instant filter
               </div>
             </div>
           )}
@@ -520,8 +553,39 @@ export function SearchPage() {
                 />
               ))}
             </div>
+          ) : allDonors.length === 0 ? (
+            /* No donors registered yet */
+            <div
+              className="text-center py-16 rounded-2xl"
+              data-ocid="search.empty_state"
+              style={{
+                border: "1px dashed oklch(var(--neon-red) / 0.2)",
+                backgroundColor: "oklch(var(--card) / 0.3)",
+              }}
+            >
+              <div className="text-5xl mb-4">🩸</div>
+              <h3 className="font-semibold text-lg mb-2">
+                No donors registered yet
+              </h3>
+              <p className="text-muted-foreground text-sm max-w-sm mx-auto">
+                Be the first to register as a donor and help save lives!
+              </p>
+              <a href="/register" className="mt-4 inline-block">
+                <Button
+                  type="button"
+                  className="mt-4"
+                  data-ocid="search.register.button"
+                  style={{
+                    backgroundColor: "oklch(var(--neon-red))",
+                    color: "white",
+                  }}
+                >
+                  Register as Donor
+                </Button>
+              </a>
+            </div>
           ) : (
-            /* Empty state */
+            /* Donors exist but none match filters */
             <div
               className="text-center py-16 rounded-2xl"
               data-ocid="search.empty_state"
@@ -533,35 +597,22 @@ export function SearchPage() {
               <div className="text-5xl mb-4">🔍</div>
               <h3 className="font-semibold text-lg mb-2">No donors found</h3>
               <p className="text-muted-foreground text-sm max-w-sm mx-auto">
-                Try adjusting your search — remove the blood group or city
-                filter, or click "Search All Donors" to see everyone.
+                Try adjusting your filters — remove the blood group or city
+                filter, or clear all filters to see all {allDonors.length} donor
+                {allDonors.length !== 1 ? "s" : ""}.
               </p>
+              <Button
+                type="button"
+                variant="outline"
+                className="mt-4 border-primary/40"
+                data-ocid="search.all.button"
+                onClick={handleClearFilters}
+              >
+                Show All Donors
+              </Button>
             </div>
           )}
         </>
-      )}
-
-      {/* Initial state — before first search */}
-      {!searched && !showLoading && (
-        <div
-          className="text-center py-16 text-muted-foreground rounded-2xl"
-          style={{
-            border: "1px dashed oklch(var(--border) / 0.4)",
-            backgroundColor: "oklch(var(--card) / 0.2)",
-          }}
-        >
-          <MapPin
-            className="h-12 w-12 mx-auto mb-4 opacity-25"
-            style={{ color: "oklch(var(--neon-red))" }}
-          />
-          <p className="text-base font-medium mb-1">
-            Search for blood donors near you
-          </p>
-          <p className="text-sm opacity-60">
-            Select a blood group or enter a city above — or click "Search All
-            Donors" to browse everyone.
-          </p>
-        </div>
       )}
     </main>
   );

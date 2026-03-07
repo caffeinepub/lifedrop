@@ -35,12 +35,6 @@ export function useCreateBloodRequest() {
       contact: string;
     }) => {
       if (!actor) throw new Error("Not connected to backend");
-      // Ensure system is initialized before creating a request
-      try {
-        await actor.initSystem();
-      } catch {
-        // Already initialized — safe to ignore
-      }
       return actor.createBloodRequest(
         params.patientName,
         params.bloodGroup,
@@ -197,7 +191,7 @@ export function useApproveHospital() {
   });
 }
 
-// ─── All Donors (public, for stats & leaderboard) ────────────
+// ─── All Donors (public, no auth required) ───────────────────
 export function useAllDonors() {
   const { actor, isFetching } = useActor();
   return useQuery({
@@ -205,13 +199,20 @@ export function useAllDonors() {
     queryFn: async () => {
       if (!actor) return [];
       try {
-        return await actor.searchDonors(null, null, false);
+        const results = await actor.getAllDonorsList();
+        return results.map((d) => ({
+          ...d,
+          totalDonations: BigInt(d.totalDonations ?? 0),
+          phone: d.phone ?? "",
+          name: d.name ?? "",
+          city: d.city ?? "",
+        }));
       } catch {
         return [];
       }
     },
     enabled: !!actor && !isFetching,
-    refetchInterval: 30000,
+    refetchInterval: 15000,
   });
 }
 
@@ -246,26 +247,59 @@ export function usePublicUserList() {
       }
     },
     enabled: !!actor && !isFetching,
-    refetchInterval: 15000,
+    refetchInterval: 10000,
   });
 }
 
-// ─── Total Users Count (no auth required) ────────────────────
+// ─── Total Users Count ───────────────────────────────────────
+// getTotalUsers() requires #user permission and fails for anonymous callers.
+// Use publicUserList.length instead for accurate counts.
 export function useTotalUsers() {
+  // totalUsers is derived from publicUserList in components
+  // Return a placeholder so callers don't break
+  return { data: undefined };
+}
+
+// ─── All Donors List (public, no auth required) ───────────────
+export function useAllDonorsList() {
   const { actor, isFetching } = useActor();
   return useQuery({
-    queryKey: ["totalUsers"],
+    queryKey: ["allDonorsList"],
     queryFn: async () => {
-      if (!actor) return 0n;
+      if (!actor) return [];
       try {
-        return await actor.getTotalUsers();
+        const results = await actor.getAllDonorsList();
+        return results.map((d) => ({
+          ...d,
+          totalDonations: BigInt(d.totalDonations ?? 0),
+          phone: d.phone ?? "",
+          name: d.name ?? "",
+          city: d.city ?? "",
+        }));
       } catch {
-        return 0n;
+        return [];
       }
     },
     enabled: !!actor && !isFetching,
-    refetchInterval: 15000,
+    staleTime: 10000,
+    refetchInterval: 30000,
   });
+}
+
+// ─── Role count utility (no backend call required) ───────────
+export function countRoleInList(
+  users: Array<{ role: unknown }>,
+  roleName: string,
+): number {
+  return users.filter((u) => {
+    const r =
+      typeof u.role === "string"
+        ? u.role
+        : u.role && typeof u.role === "object"
+          ? (Object.keys(u.role)[0] ?? "")
+          : "";
+    return r === roleName;
+  }).length;
 }
 
 // ─── Public Donor Search (with name, phone, city) ─────────────

@@ -1,9 +1,8 @@
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Calendar, Globe, Loader2, Plus, Users } from "lucide-react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { useSearchDonors } from "../../hooks/useQueries";
 
@@ -38,7 +37,26 @@ const statusColors = {
 
 const initialCamps: Camp[] = [];
 
+type StoredNGO = {
+  orgName?: string;
+  regNumber?: string;
+  contactPerson?: string;
+  focusArea?: string;
+  email?: string;
+  phone?: string;
+};
+
 export function NGODashboard() {
+  // Read NGO-specific fields saved during registration
+  const storedNGO = useMemo((): StoredNGO | null => {
+    try {
+      const raw = localStorage.getItem("lifedrop_profile_ngo");
+      return raw ? (JSON.parse(raw) as StoredNGO) : null;
+    } catch {
+      return null;
+    }
+  }, []);
+
   const [camps, setCamps] = useState<Camp[]>(initialCamps);
   const [isCreating, setIsCreating] = useState(false);
   const [form, setForm] = useState({
@@ -93,9 +111,36 @@ export function NGODashboard() {
       <h1 className="font-display text-3xl font-black mb-2">
         NGO <span style={{ color: "oklch(var(--neon-red))" }}>Dashboard</span>
       </h1>
-      <p className="text-muted-foreground mb-8">
-        Manage donation camps and volunteers
+      <p className="text-muted-foreground mb-2">
+        {storedNGO?.orgName ? `${storedNGO.orgName} — ` : ""}Manage donation
+        camps and volunteers
       </p>
+      {/* Profile info strip */}
+      {(storedNGO?.phone || storedNGO?.email || storedNGO?.regNumber) && (
+        <div className="flex flex-wrap gap-4 mb-4 text-sm text-muted-foreground">
+          {storedNGO.phone && (
+            <span className="flex items-center gap-1.5">
+              📞{" "}
+              <span className="font-semibold text-foreground">
+                {storedNGO.phone}
+              </span>
+            </span>
+          )}
+          {storedNGO.email && (
+            <span className="flex items-center gap-1.5">
+              ✉️ <span className="text-foreground">{storedNGO.email}</span>
+            </span>
+          )}
+          {storedNGO.regNumber && (
+            <span className="flex items-center gap-1.5">
+              🪪{" "}
+              <span className="font-mono text-foreground">
+                {storedNGO.regNumber}
+              </span>
+            </span>
+          )}
+        </div>
+      )}
 
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">

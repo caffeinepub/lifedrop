@@ -103,6 +103,7 @@ export interface _SERVICE {
     [string, BloodGroup, bigint, string, string, UrgencyLevel, string],
     bigint
   >,
+  'getAllDonorsList' : ActorMethod<[], Array<DonorPublicInfo>>,
   'getAllHospitals' : ActorMethod<[], Array<HospitalProfile>>,
   'getAllUsers' : ActorMethod<[], Array<User>>,
   'getBloodRequests' : ActorMethod<[], Array<BloodRequest>>,
@@ -111,9 +112,9 @@ export interface _SERVICE {
   'getCallerUserRole' : ActorMethod<[], UserRole>,
   'getDonorProfile' : ActorMethod<[Principal], [] | [DonorProfile]>,
   'getPublicUserList' : ActorMethod<[], Array<PublicUserEntry>>,
+  'getRoleCount' : ActorMethod<[Role], bigint>,
   'getTotalUsers' : ActorMethod<[], bigint>,
   'getUserProfile' : ActorMethod<[Principal], [] | [UserProfile]>,
-  'initSystem' : ActorMethod<[], undefined>,
   'isCallerAdmin' : ActorMethod<[], boolean>,
   'registerUser' : ActorMethod<
     [string, string, string, Role, string, [] | [BloodGroup]],
@@ -129,6 +130,7 @@ export interface _SERVICE {
     Array<DonorPublicInfo>
   >,
   'updateDonorAvailability' : ActorMethod<[boolean], boolean>,
+  'updateHospitalProfile' : ActorMethod<[string, string, string], boolean>,
   'updateUser' : ActorMethod<[User], undefined>,
   'upgrade' : ActorMethod<[], undefined>,
 }

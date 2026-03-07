@@ -102,6 +102,8 @@ export function RegisteredUsersSidebar() {
     const handler = () => {
       void queryClient.invalidateQueries({ queryKey: ["publicUserList"] });
       void queryClient.invalidateQueries({ queryKey: ["totalUsers"] });
+      void queryClient.invalidateQueries({ queryKey: ["allDonors"] });
+      void queryClient.invalidateQueries({ queryKey: ["allDonorsList"] });
     };
     window.addEventListener("lifedrop_user_registered", handler);
     return () =>

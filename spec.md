@@ -1,29 +1,26 @@
 # LIFEDROP
 
 ## Current State
-The backend has a critical bug: `registerUser` checks `if (not initialized)` which requires `initSystem()` to be called first. This is never called automatically, so all registrations fail with "System not initialized". Additionally, many backend functions check `AccessControl.hasPermission` which requires Internet Identity login — but the app has no login concept, causing "Failed to connect" errors for anonymous callers.
+The app has a full Motoko backend with `registerUser`, `getAllDonorsList`, `searchDonorsPublic`, and `getPublicUserList`. Registration forms collect name, phone, city, blood group for each role. The Search Donors page uses `getAllDonorsList` to show donor cards with phone and WhatsApp.
+
+**Root bug**: All users who are not logged in via Internet Identity share the same anonymous principal (`2vxsx-fae`). The backend's `registerUser` uses `users.containsKey(caller)` to detect duplicates — so after the first person registers, every subsequent registration is silently skipped (returns the same caller principal). Phone numbers and details of all users after the first are never stored. Search shows "Phone not provided" because the phone field is empty for all duplicated-principal entries.
 
 ## Requested Changes (Diff)
 
 ### Add
-- Backend: `getAllRegisteredUsers()` — public query, returns all users (name, role, city) for the sidebar
+- `src/frontend/src/utils/deviceIdentity.ts` — generates a persistent Ed25519 keypair per device/browser, stored in localStorage. Each device gets a unique principal, so each registration goes to a unique slot in the backend HashMap.
+- Update `useActor.ts` to always use the device keypair identity (not anonymous) when no Internet Identity session is active.
 
 ### Modify
-- Backend: Remove `initialized` guard from `registerUser` — any caller (anonymous or not) can register freely
-- Backend: Remove `AccessControl.hasPermission` guards from `registerUser`, `getBloodRequests`, `searchDonors`, `getDonorProfile`, `getAllHospitals` — these are public-facing functions
-- Backend: Remove `AccessControl.hasPermission` guard from `getCallerUserProfile` — return null if not found instead of trapping
-- Backend: Remove `AccessControl.hasPermission` guard from `saveCallerUserProfile` — allow any caller
-- Backend: Remove the `initSystem` requirement entirely (keep the function for backward compat but make it a no-op)
-- Backend: `createBloodRequest` — remove initialized check, allow any caller
-- Frontend: Remove any calls to `initSystem` before registration
-- Frontend: Remove "Backend not ready" guard that blocks on actor being null
+- `useActor.ts` — import `getOrCreateDeviceIdentity()` and use it as the identity for every actor call (replaces anonymous actor). This gives each user a unique principal.
+- Backend `registerUser` — add an `updateUser` path: if the caller is already registered, **update** their name/phone/email/city instead of silently returning. This fixes the case where a user re-registers with different details.
+- `getAllDonorsList` — no change needed; it already reads phone from the users map correctly. Fix will come from each user having a unique principal.
 
 ### Remove
-- Backend: `initialized` stable variable and its guard logic
-- Backend: All `Runtime.trap("System not initialized")` calls
+- Nothing removed.
 
 ## Implementation Plan
-1. Rewrite main.mo — strip out initSystem guard, remove access control from public functions, add getAllRegisteredUsers
-2. Regenerate backend types (backend.d.ts) to include new function
-3. Update frontend RegisterPage to remove initSystem pre-call if present
-4. Update sidebar/AppContext to use getAllRegisteredUsers from backend
+1. Create `src/frontend/src/utils/deviceIdentity.ts` that generates/loads an Ed25519 keypair from localStorage and returns an `Identity`.
+2. Update `useActor.ts` to call `getOrCreateDeviceIdentity()` and always use it (skip anonymous actor path).
+3. Update backend `registerUser` to update existing user's phone/name/email/city if already registered (upsert behavior).
+4. Validate and deploy.
