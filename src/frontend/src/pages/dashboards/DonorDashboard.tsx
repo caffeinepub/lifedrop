@@ -20,7 +20,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { BloodGroup, UrgencyLevel } from "../../backend.d";
 import { useApp } from "../../contexts/AppContext";
-import { useInternetIdentity } from "../../hooks/useInternetIdentity";
+
 import {
   useAcceptBloodRequest,
   useBloodRequests,
@@ -205,7 +205,6 @@ function EligibilityChecker() {
 
 export function DonorDashboard() {
   const navigate = useNavigate();
-  const { identity } = useInternetIdentity();
   const { userProfile } = useApp();
   const [availability, setAvailability] = useState(true);
 
@@ -216,8 +215,8 @@ export function DonorDashboard() {
 
   const totalDonations = 8; // Would come from donor profile in production
   const badge = getBadge(totalDonations);
-  const donorId = identity
-    ? `LD-${identity.getPrincipal().toString().slice(0, 8).toUpperCase()}`
+  const donorId = userProfile
+    ? `LD-${userProfile.name.replace(/\s+/g, "").slice(0, 6).toUpperCase()}-${Date.now().toString(36).slice(-4).toUpperCase()}`
     : "LD-XXXXXXXX";
 
   const handleToggleAvailability = async (val: boolean) => {
@@ -242,18 +241,18 @@ export function DonorDashboard() {
     }
   };
 
-  if (!identity) {
+  if (!userProfile) {
     return (
       <main className="container mx-auto px-4 py-24 text-center">
         <p className="text-muted-foreground">
-          Please login to access your donor dashboard.
+          Please register to access your donor dashboard.
         </p>
         <Button
           className="mt-4"
-          onClick={() => void navigate({ to: "/login" })}
+          onClick={() => void navigate({ to: "/register" })}
           style={{ backgroundColor: "oklch(var(--neon-red))", color: "white" }}
         >
-          Login
+          Register
         </Button>
       </main>
     );
@@ -284,8 +283,7 @@ export function DonorDashboard() {
               </div>
               <div className="flex-1 min-w-0">
                 <h2 className="font-semibold truncate">
-                  {userProfile?.name ??
-                    `${identity.getPrincipal().toString().slice(0, 16)}...`}
+                  {userProfile?.name ?? "Donor"}
                 </h2>
                 <p className="text-sm text-muted-foreground truncate">
                   {userProfile?.city ?? "Location not set"}

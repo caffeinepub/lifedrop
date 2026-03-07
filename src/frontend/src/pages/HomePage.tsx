@@ -1,5 +1,6 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import {
   Activity,
@@ -14,18 +15,44 @@ import {
   Users,
   Zap,
 } from "lucide-react";
-import { useApp } from "../contexts/AppContext";
+import { useEffect, useState } from "react";
+import { getRegisteredUsers, useApp } from "../contexts/AppContext";
+import { useActor } from "../hooks/useActor";
 
 const bloodGroupStats = [
-  { group: "A+", donors: 312, pct: 85 },
-  { group: "A−", donors: 48, pct: 30 },
-  { group: "B+", donors: 274, pct: 78 },
-  { group: "B−", donors: 39, pct: 22 },
-  { group: "AB+", donors: 87, pct: 52 },
-  { group: "AB−", donors: 22, pct: 15 },
-  { group: "O+", donors: 398, pct: 92 },
-  { group: "O−", donors: 61, pct: 38 },
+  { group: "A+", pct: 0 },
+  { group: "A−", pct: 0 },
+  { group: "B+", pct: 0 },
+  { group: "B−", pct: 0 },
+  { group: "AB+", pct: 0 },
+  { group: "AB−", pct: 0 },
+  { group: "O+", pct: 0 },
+  { group: "O−", pct: 0 },
 ];
+
+function useStats() {
+  const { actor, isFetching } = useActor();
+  return useQuery({
+    queryKey: ["stats"],
+    queryFn: async () => {
+      if (!actor) return null;
+      try {
+        const [requests, hospitals] = await Promise.all([
+          actor.getBloodRequests().catch(() => []),
+          actor.getAllHospitals().catch(() => []),
+        ]);
+        return {
+          requests: requests.length,
+          hospitals: hospitals.length,
+        };
+      } catch {
+        return null;
+      }
+    },
+    enabled: !!actor && !isFetching,
+    refetchInterval: 30000,
+  });
+}
 
 const howItWorksSteps = [
   {
@@ -54,31 +81,51 @@ const howItWorksSteps = [
   },
 ];
 
-const stats = [
-  {
-    label: "Registered Donors",
-    value: "12,400+",
-    icon: <Users className="h-5 w-5" />,
-  },
-  {
-    label: "Lives Saved",
-    value: "4,200+",
-    icon: <Heart className="h-5 w-5" />,
-  },
-  {
-    label: "Partner Hospitals",
-    value: "380+",
-    icon: <Building2 className="h-5 w-5" />,
-  },
-  {
-    label: "Cities Covered",
-    value: "120+",
-    icon: <Globe className="h-5 w-5" />,
-  },
-];
-
 export function HomePage() {
   const { t } = useApp();
+  const { data: backendStats } = useStats();
+
+  // Track registered users count from localStorage (updates when someone registers)
+  const [registeredCount, setRegisteredCount] = useState(
+    () => getRegisteredUsers().length,
+  );
+  const [donorCount, setDonorCount] = useState(
+    () => getRegisteredUsers().filter((u) => u.role === "donor").length,
+  );
+
+  useEffect(() => {
+    const refresh = () => {
+      const users = getRegisteredUsers();
+      setRegisteredCount(users.length);
+      setDonorCount(users.filter((u) => u.role === "donor").length);
+    };
+    window.addEventListener("lifedrop_user_registered", refresh);
+    return () =>
+      window.removeEventListener("lifedrop_user_registered", refresh);
+  }, []);
+
+  const stats = [
+    {
+      label: "Registered Donors",
+      value: String(donorCount),
+      icon: <Users className="h-5 w-5" />,
+    },
+    {
+      label: "Blood Requests",
+      value: backendStats ? String(backendStats.requests) : "0",
+      icon: <Heart className="h-5 w-5" />,
+    },
+    {
+      label: "Partner Hospitals",
+      value: backendStats ? String(backendStats.hospitals) : "0",
+      icon: <Building2 className="h-5 w-5" />,
+    },
+    {
+      label: "Total Users",
+      value: String(registeredCount),
+      icon: <Globe className="h-5 w-5" />,
+    },
+  ];
 
   return (
     <main>
@@ -166,7 +213,7 @@ export function HomePage() {
                 </Button>
               </Link>
 
-              <Link to="/login" data-ocid="hero.donor.secondary_button">
+              <Link to="/register" data-ocid="hero.donor.secondary_button">
                 <Button
                   size="lg"
                   variant="outline"
@@ -177,7 +224,7 @@ export function HomePage() {
                 </Button>
               </Link>
 
-              <Link to="/login" data-ocid="hero.hospital.secondary_button">
+              <Link to="/register" data-ocid="hero.hospital.secondary_button">
                 <Button
                   size="lg"
                   variant="ghost"
@@ -342,7 +389,7 @@ export function HomePage() {
                 />
               </div>
               <div className="text-xs text-muted-foreground text-center">
-                {bg.donors} donors
+                {donorCount} donors
               </div>
             </div>
           ))}
@@ -382,7 +429,7 @@ export function HomePage() {
                 camps, coordinate volunteers, and track donation events — all
                 from one dashboard.
               </p>
-              <Link to="/login">
+              <Link to="/register">
                 <Button
                   variant="outline"
                   className="border-primary/50"
@@ -395,10 +442,26 @@ export function HomePage() {
             </div>
             <div className="grid grid-cols-2 gap-4">
               {[
-                { label: "Active Camps", value: "24", icon: "🏕️" },
-                { label: "Volunteers", value: "1,200+", icon: "🙌" },
-                { label: "This Month", value: "3,400 ml", icon: "🩸" },
-                { label: "NGO Partners", value: "45+", icon: "🤝" },
+                {
+                  label: "Blood Requests",
+                  value: backendStats ? String(backendStats.requests) : "0",
+                  icon: "🏕️",
+                },
+                {
+                  label: "Registered Users",
+                  value: String(registeredCount),
+                  icon: "🙌",
+                },
+                {
+                  label: "Total Donors",
+                  value: String(donorCount),
+                  icon: "🩸",
+                },
+                {
+                  label: "Hospitals",
+                  value: backendStats ? String(backendStats.hospitals) : "0",
+                  icon: "🤝",
+                },
               ].map((item) => (
                 <div
                   key={item.label}
@@ -445,7 +508,7 @@ export function HomePage() {
               up to 3 lives.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Link to="/login" data-ocid="cta.register.primary_button">
+              <Link to="/register" data-ocid="cta.register.primary_button">
                 <Button
                   size="lg"
                   className="text-base font-bold px-10"

@@ -1,18 +1,15 @@
 import { Button } from "@/components/ui/button";
 import { Link, useRouterState } from "@tanstack/react-router";
-import { AlertTriangle, Droplets, Menu, X } from "lucide-react";
+import { AlertTriangle, Droplets, Menu, UserPlus, X } from "lucide-react";
 import { useState } from "react";
 import { type Language, useApp } from "../contexts/AppContext";
-import { useInternetIdentity } from "../hooks/useInternetIdentity";
 import { cn } from "../lib/utils";
 
 export function Navbar() {
   const [mobileOpen, setMobileOpen] = useState(false);
-  const { identity, login, clear, isLoggingIn } = useInternetIdentity();
   const { t, language, setLanguage, userProfile } = useApp();
   const routerState = useRouterState();
   const pathname = routerState.location.pathname;
-  const isLoggedIn = !!identity;
 
   const navLinks = [
     { href: "/", label: t("home") },
@@ -22,7 +19,7 @@ export function Navbar() {
   ];
 
   const getDashboardPath = () => {
-    if (!userProfile) return "/dashboard";
+    if (!userProfile) return "/register";
     const roleMap: Record<string, string> = {
       donor: "/dashboard/donor",
       patient: "/dashboard/patient",
@@ -53,7 +50,7 @@ export function Navbar() {
         >
           <div className="relative">
             <Droplets
-              className="h-7 w-7 text-primary group-hover:animate-heartbeat transition-transform"
+              className="h-7 w-7 text-primary group-hover:scale-110 transition-transform"
               style={{ color: "oklch(var(--neon-red))" }}
             />
           </div>
@@ -113,42 +110,36 @@ export function Navbar() {
             ))}
           </div>
 
-          {isLoggedIn ? (
-            <>
-              <Link to={getDashboardPath()}>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  data-ocid="nav.dashboard.button"
-                  className="border-border text-foreground hover:bg-secondary"
-                >
-                  {t("dashboard")}
-                </Button>
-              </Link>
+          {userProfile ? (
+            <Link to={getDashboardPath()}>
               <Button
-                variant="ghost"
+                variant="outline"
                 size="sm"
-                data-ocid="nav.logout.button"
-                onClick={clear}
-                className="text-muted-foreground hover:text-foreground"
+                data-ocid="nav.dashboard.button"
+                className="border-border text-foreground hover:bg-secondary gap-2"
               >
-                {t("logout")}
+                <span
+                  className="w-2 h-2 rounded-full flex-shrink-0"
+                  style={{ backgroundColor: "oklch(var(--neon-red))" }}
+                />
+                {userProfile.name.split(" ")[0]}
               </Button>
-            </>
+            </Link>
           ) : (
-            <Button
-              size="sm"
-              data-ocid="nav.login.button"
-              onClick={login}
-              disabled={isLoggingIn}
-              className="neon-glow-sm font-semibold"
-              style={{
-                backgroundColor: "oklch(var(--neon-red))",
-                color: "white",
-              }}
-            >
-              {isLoggingIn ? "Connecting..." : t("login")}
-            </Button>
+            <Link to="/register">
+              <Button
+                size="sm"
+                data-ocid="nav.register.button"
+                className="font-semibold gap-1.5"
+                style={{
+                  backgroundColor: "oklch(var(--neon-red))",
+                  color: "white",
+                }}
+              >
+                <UserPlus className="h-3.5 w-3.5" />
+                {t("register")}
+              </Button>
+            </Link>
           )}
         </div>
 
@@ -205,44 +196,29 @@ export function Navbar() {
                   </button>
                 ))}
               </div>
-              {isLoggedIn ? (
-                <>
-                  <Link
-                    to={getDashboardPath()}
-                    onClick={() => setMobileOpen(false)}
-                  >
-                    <Button variant="outline" size="sm" className="w-full">
-                      {t("dashboard")}
-                    </Button>
-                  </Link>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => {
-                      clear();
-                      setMobileOpen(false);
-                    }}
-                    className="w-full"
-                  >
-                    {t("logout")}
-                  </Button>
-                </>
-              ) : (
-                <Button
-                  size="sm"
-                  onClick={() => {
-                    login();
-                    setMobileOpen(false);
-                  }}
-                  disabled={isLoggingIn}
-                  className="w-full"
-                  style={{
-                    backgroundColor: "oklch(var(--neon-red))",
-                    color: "white",
-                  }}
+              {userProfile ? (
+                <Link
+                  to={getDashboardPath()}
+                  onClick={() => setMobileOpen(false)}
                 >
-                  {t("login")}
-                </Button>
+                  <Button variant="outline" size="sm" className="w-full">
+                    {t("dashboard")}
+                  </Button>
+                </Link>
+              ) : (
+                <Link to="/register" onClick={() => setMobileOpen(false)}>
+                  <Button
+                    size="sm"
+                    className="w-full gap-1.5"
+                    style={{
+                      backgroundColor: "oklch(var(--neon-red))",
+                      color: "white",
+                    }}
+                  >
+                    <UserPlus className="h-3.5 w-3.5" />
+                    {t("register")}
+                  </Button>
+                </Link>
               )}
             </div>
           </div>

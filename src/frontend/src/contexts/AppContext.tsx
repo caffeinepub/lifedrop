@@ -1,15 +1,11 @@
-import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   type ReactNode,
   createContext,
   useCallback,
   useContext,
-  useEffect,
   useState,
 } from "react";
 import type { UserProfile } from "../backend.d";
-import { useActor } from "../hooks/useActor";
-import { useInternetIdentity } from "../hooks/useInternetIdentity";
 
 // ─── Language ────────────────────────────────────────────────
 export type Language = "en" | "ta" | "hi";
@@ -68,6 +64,48 @@ export const translations: Record<Language, Record<string, string>> = {
   },
 };
 
+// ─── Registered User (localStorage) ─────────────────────────
+export interface RegisteredUserEntry {
+  name: string;
+  role: string;
+  city: string;
+  bloodGroup?: string;
+  registeredAt: string;
+}
+
+const STORAGE_KEY_PROFILE = "lifedrop_user_profile";
+const STORAGE_KEY_USERS = "lifedrop_registered_users";
+
+export function getStoredProfile(): UserProfile | null {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY_PROFILE);
+    return raw ? (JSON.parse(raw) as UserProfile) : null;
+  } catch {
+    return null;
+  }
+}
+
+export function saveProfileToStorage(profile: UserProfile): void {
+  localStorage.setItem(STORAGE_KEY_PROFILE, JSON.stringify(profile));
+}
+
+export function getRegisteredUsers(): RegisteredUserEntry[] {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY_USERS);
+    return raw ? (JSON.parse(raw) as RegisteredUserEntry[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+export function addRegisteredUser(entry: RegisteredUserEntry): void {
+  const existing = getRegisteredUsers();
+  existing.unshift(entry); // newest first
+  localStorage.setItem(STORAGE_KEY_USERS, JSON.stringify(existing));
+  // Dispatch a custom event so the sidebar can refresh
+  window.dispatchEvent(new CustomEvent("lifedrop_user_registered"));
+}
+
 // ─── Context Types ────────────────────────────────────────────
 interface AppContextValue {
   language: Language;
@@ -75,6 +113,7 @@ interface AppContextValue {
   t: (key: string) => string;
   userProfile: UserProfile | null;
   isLoadingProfile: boolean;
+  setUserProfile: (profile: UserProfile | null) => void;
   refetchProfile: () => void;
 }
 
@@ -86,9 +125,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return (localStorage.getItem("lifedrop_lang") as Language) ?? "en";
   });
 
-  const { actor, isFetching } = useActor();
-  const { identity } = useInternetIdentity();
-  const queryClient = useQueryClient();
+  const [userProfile, setUserProfileState] = useState<UserProfile | null>(
+    () => {
+      return getStoredProfile();
+    },
+  );
 
   const setLanguage = useCallback((lang: Language) => {
     setLanguageState(lang);
@@ -102,25 +143,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
     [language],
   );
 
-  const {
-    data: userProfile,
-    isLoading: isLoadingProfile,
-    refetch: refetchProfile,
-  } = useQuery<UserProfile | null>({
-    queryKey: ["userProfile", identity?.getPrincipal().toString()],
-    queryFn: async () => {
-      if (!actor || !identity) return null;
-      return actor.getCallerUserProfile();
-    },
-    enabled: !!actor && !isFetching && !!identity,
-  });
-
-  // Invalidate profile when identity changes
-  useEffect(() => {
-    if (identity) {
-      queryClient.invalidateQueries({ queryKey: ["userProfile"] });
+  const setUserProfile = useCallback((profile: UserProfile | null) => {
+    setUserProfileState(profile);
+    if (profile) {
+      saveProfileToStorage(profile);
+    } else {
+      localStorage.removeItem(STORAGE_KEY_PROFILE);
     }
-  }, [identity, queryClient]);
+  }, []);
+
+  const refetchProfile = useCallback(() => {
+    // Re-read from localStorage
+    setUserProfileState(getStoredProfile());
+  }, []);
 
   return (
     <AppContext.Provider
@@ -128,8 +163,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
         language,
         setLanguage,
         t,
-        userProfile: userProfile ?? null,
-        isLoadingProfile,
+        userProfile,
+        isLoadingProfile: false,
+        setUserProfile,
         refetchProfile,
       }}
     >

@@ -10,7 +10,12 @@ export function useBloodRequests() {
     queryKey: ["bloodRequests"],
     queryFn: async () => {
       if (!actor) return [];
-      return actor.getBloodRequests();
+      try {
+        return await actor.getBloodRequests();
+      } catch {
+        // Return empty array if system not initialized or access denied
+        return [];
+      }
     },
     enabled: !!actor && !isFetching,
   });
@@ -29,7 +34,13 @@ export function useCreateBloodRequest() {
       urgency: UrgencyLevel;
       contact: string;
     }) => {
-      if (!actor) throw new Error("Not connected");
+      if (!actor) throw new Error("Not connected to backend");
+      // Ensure system is initialized before creating a request
+      try {
+        await actor.initSystem();
+      } catch {
+        // Already initialized — safe to ignore
+      }
       return actor.createBloodRequest(
         params.patientName,
         params.bloodGroup,
@@ -51,8 +62,20 @@ export function useAcceptBloodRequest() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (requestId: bigint) => {
-      if (!actor) throw new Error("Not connected");
-      return actor.acceptBloodRequest(requestId);
+      if (!actor) throw new Error("Not connected to backend");
+      try {
+        return await actor.acceptBloodRequest(requestId);
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        if (
+          msg.toLowerCase().includes("permission") ||
+          msg.toLowerCase().includes("access") ||
+          msg.toLowerCase().includes("unauthorized")
+        ) {
+          throw new Error("You don't have permission to accept this request");
+        }
+        throw err;
+      }
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["bloodRequests"] });
@@ -65,8 +88,20 @@ export function useCompleteBloodRequest() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (requestId: bigint) => {
-      if (!actor) throw new Error("Not connected");
-      return actor.completeBloodRequest(requestId);
+      if (!actor) throw new Error("Not connected to backend");
+      try {
+        return await actor.completeBloodRequest(requestId);
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        if (
+          msg.toLowerCase().includes("permission") ||
+          msg.toLowerCase().includes("access") ||
+          msg.toLowerCase().includes("unauthorized")
+        ) {
+          throw new Error("You don't have permission to complete this request");
+        }
+        throw err;
+      }
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["bloodRequests"] });
@@ -86,7 +121,11 @@ export function useSearchDonors(
     queryKey: ["donors", bloodGroup, city, availableOnly],
     queryFn: async () => {
       if (!actor) return [];
-      return actor.searchDonors(bloodGroup, city, availableOnly);
+      try {
+        return await actor.searchDonors(bloodGroup, city, availableOnly);
+      } catch {
+        return [];
+      }
     },
     enabled: !!actor && !isFetching && enabled,
   });
@@ -115,7 +154,12 @@ export function useAllUsers() {
     queryKey: ["allUsers"],
     queryFn: async () => {
       if (!actor) return [];
-      return actor.getAllUsers();
+      try {
+        return await actor.getAllUsers();
+      } catch {
+        // getAllUsers requires admin role — return empty array for non-admin users
+        return [];
+      }
     },
     enabled: !!actor && !isFetching && !!identity,
   });
@@ -127,7 +171,11 @@ export function useAllHospitals() {
     queryKey: ["allHospitals"],
     queryFn: async () => {
       if (!actor) return [];
-      return actor.getAllHospitals();
+      try {
+        return await actor.getAllHospitals();
+      } catch {
+        return [];
+      }
     },
     enabled: !!actor && !isFetching,
   });

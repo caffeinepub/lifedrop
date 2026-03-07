@@ -1,9 +1,8 @@
 import { Link } from "@tanstack/react-router";
-import { Droplets, Heart, Mail, MapPin, Phone } from "lucide-react";
+import { Droplets, Mail, Phone } from "lucide-react";
 
 export function Footer() {
   const currentYear = new Date().getFullYear();
-  const hostname = encodeURIComponent(window.location.hostname);
 
   return (
     <footer className="border-t border-border bg-card mt-16">
@@ -43,8 +42,8 @@ export function Footer() {
               {[
                 { label: "Find Donors", href: "/search" },
                 { label: "Emergency Request", href: "/request" },
-                { label: "Register as Donor", href: "/login" },
-                { label: "Hospital Registration", href: "/login" },
+                { label: "Register as Donor", href: "/register" },
+                { label: "Hospital Registration", href: "/register" },
                 { label: "Blog & Awareness", href: "/blog" },
               ].map((link) => (
                 <li key={link.href}>
@@ -84,57 +83,67 @@ export function Footer() {
             </p>
           </div>
 
-          {/* Contact */}
+          {/* Platform Info */}
           <div>
             <h4 className="font-semibold text-sm uppercase tracking-wider text-muted-foreground mb-4">
-              Emergency Contact
+              Platform
             </h4>
-            <ul className="space-y-3">
-              <li className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Phone
-                  className="h-4 w-4 flex-shrink-0"
-                  style={{ color: "oklch(var(--neon-red))" }}
-                />
-                <span>+91 1800-XXX-XXXX</span>
-              </li>
-              <li className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Mail
-                  className="h-4 w-4 flex-shrink-0"
-                  style={{ color: "oklch(var(--neon-red))" }}
-                />
-                <span>emergency@lifedrop.health</span>
-              </li>
-              <li className="flex items-center gap-2 text-sm text-muted-foreground">
-                <MapPin
-                  className="h-4 w-4 flex-shrink-0"
-                  style={{ color: "oklch(var(--neon-red))" }}
-                />
-                <span>Pan India Coverage</span>
-              </li>
+            <ul className="space-y-2">
+              {[
+                { label: "About LIFEDROP", href: "/" },
+                { label: "Donor Guidelines", href: "/blog" },
+                { label: "Admin Portal", href: "/dashboard/admin" },
+              ].map((link) => (
+                <li key={link.href}>
+                  <Link
+                    to={link.href}
+                    className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    {link.label}
+                  </Link>
+                </li>
+              ))}
             </ul>
           </div>
         </div>
 
         <div className="mt-10 pt-6 border-t border-border flex flex-col md:flex-row justify-between items-center gap-4">
-          <p className="text-xs text-muted-foreground">
-            © {currentYear} LIFEDROP. All rights reserved.
-          </p>
-          <p className="text-xs text-muted-foreground flex items-center gap-1">
-            Built with{" "}
-            <Heart
-              className="h-3 w-3 inline fill-current"
-              style={{ color: "oklch(var(--neon-red))" }}
-            />{" "}
-            using{" "}
-            <a
-              href={`https://caffeine.ai?utm_source=caffeine-footer&utm_medium=referral&utm_content=${hostname}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="hover:text-foreground transition-colors underline"
-            >
-              caffeine.ai
-            </a>
-          </p>
+          <div className="flex flex-col items-center md:items-start gap-1">
+            <p className="text-xs text-muted-foreground">
+              © {currentYear} LIFEDROP. All rights reserved.
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Website made by{" "}
+              <span
+                className="font-semibold"
+                style={{ color: "oklch(var(--neon-red))" }}
+              >
+                Rishan
+              </span>
+            </p>
+            <div className="flex flex-wrap gap-3 mt-1">
+              <a
+                href="mailto:rishann743@gmail.com"
+                className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <Mail
+                  className="h-3 w-3"
+                  style={{ color: "oklch(var(--neon-red))" }}
+                />
+                rishann743@gmail.com
+              </a>
+              <a
+                href="tel:8072780171"
+                className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <Phone
+                  className="h-3 w-3"
+                  style={{ color: "oklch(var(--neon-red))" }}
+                />
+                8072780171
+              </a>
+            </div>
+          </div>
         </div>
       </div>
     </footer>

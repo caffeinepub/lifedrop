@@ -6,14 +6,18 @@ import {
   createRoute,
   createRouter,
 } from "@tanstack/react-router";
+import { ChevronLeft, ChevronRight } from "lucide-react";
+import { useState } from "react";
 import { Footer } from "./components/Footer";
 import { Navbar } from "./components/Navbar";
+import { RegisteredUsersSidebar } from "./components/RegisteredUsersSidebar";
 import { AppProvider } from "./contexts/AppContext";
 import { BlogPage } from "./pages/BlogPage";
 import { DonorIdPage } from "./pages/DonorIdPage";
 import { EmergencyRequestPage } from "./pages/EmergencyRequestPage";
 import { HomePage } from "./pages/HomePage";
 import { LoginPage } from "./pages/LoginPage";
+import { RegisterPage } from "./pages/RegisterPage";
 import { SearchPage } from "./pages/SearchPage";
 import { AdminDashboard } from "./pages/dashboards/AdminDashboard";
 import { BloodBankDashboard } from "./pages/dashboards/BloodBankDashboard";
@@ -23,17 +27,65 @@ import { NGODashboard } from "./pages/dashboards/NGODashboard";
 import { PatientDashboard } from "./pages/dashboards/PatientDashboard";
 import { VolunteerDashboard } from "./pages/dashboards/VolunteerDashboard";
 
-// Root layout
-const rootRoute = createRootRoute({
-  component: () => (
+// ─── App Shell with sidebar ───────────────────────────────────
+function AppShell() {
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+
+  return (
     <AppProvider>
       <div className="min-h-screen flex flex-col">
         <Navbar />
-        <div className="flex-1">
-          <Outlet />
+        <div className="flex flex-1 overflow-hidden relative">
+          {/* Main content */}
+          <div
+            className="flex-1 overflow-y-auto min-w-0 transition-all duration-300"
+            style={{ minHeight: "calc(100vh - 4rem)" }}
+          >
+            <Outlet />
+            <Footer />
+          </div>
+
+          {/* Desktop sidebar */}
+          <div
+            className="hidden lg:flex flex-col transition-all duration-300 flex-shrink-0 relative"
+            style={{
+              width: sidebarOpen ? "260px" : "0px",
+              overflow: "hidden",
+            }}
+          >
+            {sidebarOpen && (
+              <div
+                className="h-full w-[260px] flex flex-col sticky top-16"
+                style={{ height: "calc(100vh - 4rem)" }}
+              >
+                <RegisteredUsersSidebar />
+              </div>
+            )}
+          </div>
+
+          {/* Sidebar toggle button (desktop) */}
+          <button
+            type="button"
+            onClick={() => setSidebarOpen((v) => !v)}
+            className="hidden lg:flex items-center justify-center fixed right-0 top-1/2 -translate-y-1/2 z-50 w-5 h-12 rounded-l-lg transition-all hover:opacity-100 opacity-60"
+            style={{
+              backgroundColor: "oklch(0.13 0.005 20)",
+              border: "1px solid oklch(var(--neon-red) / 0.2)",
+              borderRight: "none",
+              right: sidebarOpen ? "260px" : "0px",
+            }}
+            aria-label={sidebarOpen ? "Collapse sidebar" : "Expand sidebar"}
+            data-ocid="sidebar.toggle"
+          >
+            {sidebarOpen ? (
+              <ChevronRight className="h-3 w-3 text-muted-foreground" />
+            ) : (
+              <ChevronLeft className="h-3 w-3 text-muted-foreground" />
+            )}
+          </button>
         </div>
-        <Footer />
       </div>
+
       <Toaster
         position="top-right"
         toastOptions={{
@@ -45,7 +97,12 @@ const rootRoute = createRootRoute({
         }}
       />
     </AppProvider>
-  ),
+  );
+}
+
+// Root layout
+const rootRoute = createRootRoute({
+  component: AppShell,
 });
 
 // Routes
@@ -58,6 +115,11 @@ const loginRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/login",
   component: LoginPage,
+});
+const registerRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/register",
+  component: RegisterPage,
 });
 const requestRoute = createRoute({
   getParentRoute: () => rootRoute,
@@ -121,7 +183,6 @@ const adminDashRoute = createRoute({
 });
 
 function DashboardRedirect() {
-  // Placeholder - users should navigate to role-specific paths
   return (
     <div className="container mx-auto px-4 py-24 text-center">
       <p className="text-muted-foreground">Redirecting to your dashboard...</p>
@@ -132,6 +193,7 @@ function DashboardRedirect() {
 const routeTree = rootRoute.addChildren([
   indexRoute,
   loginRoute,
+  registerRoute,
   requestRoute,
   searchRoute,
   blogRoute,

@@ -14,7 +14,7 @@ import { AlertTriangle, CheckCircle2, Clock, Loader2 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { BloodGroup, UrgencyLevel } from "../backend.d";
-import { useInternetIdentity } from "../hooks/useInternetIdentity";
+
 import { useCreateBloodRequest } from "../hooks/useQueries";
 
 const bloodGroupOptions = [
@@ -61,7 +61,6 @@ const urgencyConfig = {
 
 export function EmergencyRequestPage() {
   const navigate = useNavigate();
-  const { identity, login } = useInternetIdentity();
   const createRequest = useCreateBloodRequest();
 
   const [successId, setSuccessId] = useState<bigint | null>(null);
@@ -77,11 +76,6 @@ export function EmergencyRequestPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!identity) {
-      toast.error("Please login to submit a blood request");
-      login();
-      return;
-    }
     if (!form.bloodGroup || !form.urgency) {
       toast.error("Please fill all required fields");
       return;

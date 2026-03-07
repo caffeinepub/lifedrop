@@ -20,7 +20,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { BloodGroup, UrgencyLevel } from "../../backend.d";
 import { useApp } from "../../contexts/AppContext";
-import { useInternetIdentity } from "../../hooks/useInternetIdentity";
+
 import {
   useBloodRequests,
   useCompleteBloodRequest,
@@ -72,7 +72,6 @@ const statusConfig = {
 
 export function PatientDashboard() {
   const { userProfile } = useApp();
-  const { identity } = useInternetIdentity();
   const { data: allRequests, isLoading } = useBloodRequests();
   const createRequest = useCreateBloodRequest();
   const completeRequest = useCompleteBloodRequest();
@@ -87,12 +86,8 @@ export function PatientDashboard() {
     contact: "",
   });
 
-  // Filter requests for this user (only show requests by principal)
-  const myRequests = (allRequests ?? []).filter(
-    (r) =>
-      identity &&
-      r.requesterId.toString() === identity.getPrincipal().toString(),
-  );
+  // Show all requests since we don't have principal-based filtering without II
+  const myRequests = allRequests ?? [];
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
