@@ -8,10 +8,20 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { AlertTriangle, Loader2, Plus } from "lucide-react";
+import {
+  AlertTriangle,
+  Calendar,
+  Clock,
+  Loader2,
+  MapPin,
+  Megaphone,
+  Phone,
+  Plus,
+  Users,
+} from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
-import { useApp } from "../../contexts/AppContext";
+import { type CampAnnouncement, useApp } from "../../contexts/AppContext";
 
 type BloodUnit = {
   id: string;
@@ -61,8 +71,26 @@ type StoredBloodBank = {
   phone?: string;
 };
 
+const campStatusColors = {
+  upcoming: {
+    label: "Upcoming",
+    color: "oklch(0.65 0.18 240)",
+    bg: "oklch(0.65 0.18 240 / 0.1)",
+  },
+  active: {
+    label: "Active",
+    color: "oklch(0.65 0.2 140)",
+    bg: "oklch(0.65 0.2 140 / 0.1)",
+  },
+  completed: {
+    label: "Completed",
+    color: "oklch(0.6 0.1 20)",
+    bg: "oklch(0.6 0.1 20 / 0.1)",
+  },
+};
+
 export function BloodBankDashboard() {
-  const { userProfile } = useApp();
+  const { userProfile, camps, addCamp } = useApp();
 
   // Read blood bank-specific fields saved during registration
   const storedBloodBank = useMemo((): StoredBloodBank | null => {
@@ -83,6 +111,20 @@ export function BloodBankDashboard() {
     expiryDate: "",
   });
   const [isAdding, setIsAdding] = useState(false);
+
+  // Camp announcement form
+  const [campForm, setCampForm] = useState({
+    name: "",
+    venue: "",
+    date: "",
+    time: "",
+    expectedDonors: "",
+    contact: "",
+  });
+  const [isPostingCamp, setIsPostingCamp] = useState(false);
+  const [showCampForm, setShowCampForm] = useState(false);
+
+  const bloodBankCamps = camps.filter((c) => c.postedBy === "Blood Bank");
 
   const expiringUnits = units.filter(
     (u) => u.status === "expiring" || u.status === "expired",
@@ -110,6 +152,38 @@ export function BloodBankDashboard() {
     setAddForm({ group: "", quantity: "", expiryDate: "" });
     setIsAdding(false);
     toast.success("Blood unit added to inventory");
+  };
+
+  const handlePostCamp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsPostingCamp(true);
+    await new Promise((r) => setTimeout(r, 500));
+    const today = new Date().toISOString().split("T")[0];
+    const camp: CampAnnouncement = {
+      id: `CAMP-BB-${String(Date.now()).slice(-6)}`,
+      name: campForm.name,
+      venue: campForm.venue,
+      date: campForm.date,
+      time: campForm.time,
+      expectedDonors: Number.parseInt(campForm.expectedDonors) || 0,
+      organizer: storedBloodBank?.bankName || userProfile?.name || "Blood Bank",
+      contact: campForm.contact,
+      postedBy: "Blood Bank",
+      postedAt: new Date().toISOString(),
+      status: campForm.date >= today ? "upcoming" : "completed",
+    };
+    addCamp(camp);
+    setCampForm({
+      name: "",
+      venue: "",
+      date: "",
+      time: "",
+      expectedDonors: "",
+      contact: "",
+    });
+    setShowCampForm(false);
+    setIsPostingCamp(false);
+    toast.success("Camp announcement posted! Visible to all users.");
   };
 
   return (
@@ -414,6 +488,221 @@ export function BloodBankDashboard() {
             </div>
           </div>
         </div>
+      </div>
+
+      {/* Camp Announcements Section */}
+      <div className="mt-10">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="font-semibold flex items-center gap-2">
+            <Megaphone
+              className="h-4 w-4"
+              style={{ color: "oklch(var(--neon-red))" }}
+            />
+            Post Camp Announcement
+          </h2>
+          <Button
+            size="sm"
+            onClick={() => setShowCampForm(!showCampForm)}
+            data-ocid="bloodbank.camp.open_modal_button"
+            className="btn-glow"
+            style={{
+              backgroundColor: "oklch(var(--neon-red))",
+              color: "white",
+            }}
+          >
+            <Plus className="h-4 w-4 mr-1" />
+            New Announcement
+          </Button>
+        </div>
+
+        {showCampForm && (
+          <form
+            onSubmit={handlePostCamp}
+            className="rounded-xl card-dark p-5 mb-6 space-y-4 animate-slide-in-up"
+          >
+            <h3 className="font-semibold text-sm">Donation Camp Details</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <Label>Camp Name *</Label>
+                <Input
+                  placeholder="Community Blood Drive"
+                  value={campForm.name}
+                  onChange={(e) =>
+                    setCampForm((p) => ({ ...p, name: e.target.value }))
+                  }
+                  className="bg-secondary border-border"
+                  data-ocid="bloodbank.camp_name.input"
+                  required
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Venue *</Label>
+                <Input
+                  placeholder="Town Hall, MG Road"
+                  value={campForm.venue}
+                  onChange={(e) =>
+                    setCampForm((p) => ({ ...p, venue: e.target.value }))
+                  }
+                  className="bg-secondary border-border"
+                  data-ocid="bloodbank.camp_venue.input"
+                  required
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Date *</Label>
+                <Input
+                  type="date"
+                  value={campForm.date}
+                  onChange={(e) =>
+                    setCampForm((p) => ({ ...p, date: e.target.value }))
+                  }
+                  className="bg-secondary border-border"
+                  data-ocid="bloodbank.camp_date.input"
+                  required
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Time *</Label>
+                <Input
+                  type="time"
+                  value={campForm.time}
+                  onChange={(e) =>
+                    setCampForm((p) => ({ ...p, time: e.target.value }))
+                  }
+                  className="bg-secondary border-border"
+                  data-ocid="bloodbank.camp_time.input"
+                  required
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Expected Donors *</Label>
+                <Input
+                  type="number"
+                  placeholder="50"
+                  value={campForm.expectedDonors}
+                  onChange={(e) =>
+                    setCampForm((p) => ({
+                      ...p,
+                      expectedDonors: e.target.value,
+                    }))
+                  }
+                  className="bg-secondary border-border"
+                  data-ocid="bloodbank.camp_donors.input"
+                  required
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Contact *</Label>
+                <Input
+                  type="tel"
+                  placeholder="+91 98765 43210"
+                  value={campForm.contact}
+                  onChange={(e) =>
+                    setCampForm((p) => ({ ...p, contact: e.target.value }))
+                  }
+                  className="bg-secondary border-border"
+                  data-ocid="bloodbank.camp_contact.input"
+                  required
+                />
+              </div>
+            </div>
+            <div className="flex gap-3">
+              <Button
+                type="submit"
+                className="flex-1 btn-glow"
+                disabled={isPostingCamp}
+                data-ocid="bloodbank.camp.submit_button"
+                style={{
+                  backgroundColor: "oklch(var(--neon-red))",
+                  color: "white",
+                }}
+              >
+                {isPostingCamp ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Posting...
+                  </>
+                ) : (
+                  "Post Announcement"
+                )}
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setShowCampForm(false)}
+                data-ocid="bloodbank.camp.cancel_button"
+              >
+                Cancel
+              </Button>
+            </div>
+          </form>
+        )}
+
+        {bloodBankCamps.length === 0 ? (
+          <div
+            className="rounded-xl card-dark p-8 text-center"
+            data-ocid="bloodbank.camps.empty_state"
+          >
+            <div className="text-3xl mb-2">📢</div>
+            <p className="text-muted-foreground text-sm">
+              No camp announcements yet. Post a camp to notify donors in your
+              area.
+            </p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {bloodBankCamps.map((camp, i) => {
+              const sc = campStatusColors[camp.status];
+              return (
+                <div
+                  key={camp.id}
+                  className="rounded-xl card-dark p-5"
+                  data-ocid={`bloodbank.camp.item.${i + 1}`}
+                >
+                  <div className="flex items-start justify-between mb-3">
+                    <h3 className="font-semibold text-sm">{camp.name}</h3>
+                    <span
+                      className="text-xs px-2 py-0.5 rounded-full font-medium flex-shrink-0"
+                      style={{
+                        backgroundColor: sc.bg,
+                        color: sc.color,
+                        border: `1px solid ${sc.color.replace(")", " / 0.3)")}`,
+                      }}
+                    >
+                      {sc.label}
+                    </span>
+                  </div>
+                  <div className="space-y-1.5 text-sm text-muted-foreground">
+                    <div className="flex items-center gap-2">
+                      <MapPin className="h-3.5 w-3.5 flex-shrink-0" />
+                      <span className="truncate">{camp.venue}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Calendar className="h-3.5 w-3.5 flex-shrink-0" />
+                      <span>{camp.date}</span>
+                      {camp.time && (
+                        <>
+                          <Clock className="h-3.5 w-3.5 flex-shrink-0 ml-1" />
+                          <span>{camp.time}</span>
+                        </>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Users className="h-3.5 w-3.5 flex-shrink-0" />
+                      <span>{camp.expectedDonors} expected donors</span>
+                    </div>
+                    {camp.contact && (
+                      <div className="flex items-center gap-2">
+                        <Phone className="h-3.5 w-3.5 flex-shrink-0" />
+                        <span>{camp.contact}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
     </main>
   );

@@ -14,6 +14,7 @@ export function Navbar() {
   const navLinks = [
     { href: "/", label: t("home") },
     { href: "/search", label: t("search_donors") },
+    { href: "/camps", label: t("camps") },
     { href: "/request", label: t("emergency") },
     { href: "/blog", label: t("blog") },
   ];
@@ -133,7 +134,7 @@ export function Navbar() {
               <Button
                 size="sm"
                 data-ocid="nav.register.button"
-                className="font-semibold gap-1.5"
+                className="font-semibold gap-1.5 btn-glow"
                 style={{
                   backgroundColor: "oklch(var(--neon-red))",
                   color: "white",
@@ -212,7 +213,7 @@ export function Navbar() {
                 <Link to="/register" onClick={() => setMobileOpen(false)}>
                   <Button
                     size="sm"
-                    className="w-full gap-1.5"
+                    className="w-full gap-1.5 btn-glow"
                     style={{
                       backgroundColor: "oklch(var(--neon-red))",
                       color: "white",

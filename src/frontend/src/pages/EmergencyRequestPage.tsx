@@ -406,7 +406,7 @@ export function EmergencyRequestPage() {
 
         <Button
           type="submit"
-          className="w-full py-6 text-base font-bold animate-pulse-glow"
+          className="w-full py-6 text-base font-bold animate-pulse-glow btn-glow"
           disabled={createRequest.isPending}
           data-ocid="request.submit.submit_button"
           style={{ backgroundColor: "oklch(var(--neon-red))", color: "white" }}

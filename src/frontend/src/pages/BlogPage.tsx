@@ -1,12 +1,11 @@
 import { Badge } from "@/components/ui/badge";
-import { BookOpen, ChevronRight, Clock } from "lucide-react";
+import { BookOpen, ChevronRight } from "lucide-react";
 
 const posts = [
   {
     id: 1,
     title: "Benefits of Blood Donation: Why Your Body Loves It",
     category: "Health",
-    readTime: "5 min",
     date: "March 5, 2026",
     excerpt:
       "Donating blood doesn't just save lives — it benefits the donor too. Regular blood donation reduces iron levels, lowers cardiovascular risk, and triggers the production of fresh red blood cells.",
@@ -23,7 +22,6 @@ const posts = [
     id: 2,
     title: "Who Can Donate Blood? A Complete Eligibility Guide",
     category: "Education",
-    readTime: "7 min",
     date: "February 28, 2026",
     excerpt:
       "Think you might not be eligible? Most healthy adults can donate blood. Learn about age requirements, health conditions, medications, and more in this comprehensive guide.",
@@ -40,7 +38,6 @@ const posts = [
     id: 3,
     title: "Blood Donation Myths Debunked Once and For All",
     category: "Awareness",
-    readTime: "6 min",
     date: "February 20, 2026",
     excerpt:
       'From "donating makes you weak" to "it hurts terribly" — we tackle the most common misconceptions about blood donation that stop people from saving lives.',
@@ -57,7 +54,6 @@ const posts = [
     id: 4,
     title: "Is Blood Donation Safe? Everything You Need to Know",
     category: "Safety",
-    readTime: "8 min",
     date: "February 12, 2026",
     excerpt:
       "Modern blood collection is one of the safest medical procedures. Learn about the rigorous safety protocols, what to expect, and how to prepare for your donation.",
@@ -74,7 +70,6 @@ const posts = [
     id: 5,
     title: "The Role of NGOs in India's Blood Supply Chain",
     category: "NGO",
-    readTime: "5 min",
     date: "January 30, 2026",
     excerpt:
       "NGOs are the backbone of voluntary blood donation in India. Discover how organizations across the country are bridging the gap between donors and patients.",
@@ -91,7 +86,6 @@ const posts = [
     id: 6,
     title: "Understanding Blood Components: Whole Blood vs. Plasma",
     category: "Education",
-    readTime: "6 min",
     date: "January 22, 2026",
     excerpt:
       "Did you know one donation can be separated into multiple components to help different patients? Learn about whole blood, plasma, platelets, and red cell components.",
@@ -164,10 +158,6 @@ export function BlogPage() {
             {posts[0].excerpt}
           </p>
           <div className="flex items-center gap-4 text-sm text-muted-foreground">
-            <div className="flex items-center gap-1">
-              <Clock className="h-3.5 w-3.5" />
-              {posts[0].readTime} read
-            </div>
             <span>{posts[0].date}</span>
           </div>
         </div>
@@ -206,29 +196,28 @@ export function BlogPage() {
                   {post.category}
                 </Badge>
                 <span className="text-xs text-muted-foreground">
-                  <Clock className="h-3 w-3 inline mr-0.5" />
-                  {post.readTime}
+                  {post.date}
                 </span>
               </div>
 
               <h3 className="font-semibold mb-2 leading-snug group-hover:text-foreground transition-colors">
                 {post.title}
               </h3>
-              <p className="text-sm text-muted-foreground leading-relaxed line-clamp-3">
+              <p className="text-sm text-muted-foreground leading-relaxed">
                 {post.excerpt}
               </p>
             </div>
 
-            {/* Expanded content (always visible on large screens) */}
+            {/* Full content */}
             <div
               className="px-6 pb-5 border-t"
               style={{ borderColor: "oklch(var(--border))" }}
             >
               <ul className="mt-4 space-y-2">
-                {post.content.slice(0, 2).map((para) => (
+                {post.content.map((para) => (
                   <li
                     key={para.slice(0, 30)}
-                    className="text-xs text-muted-foreground leading-relaxed line-clamp-2"
+                    className="text-xs text-muted-foreground leading-relaxed"
                   >
                     {para}
                   </li>

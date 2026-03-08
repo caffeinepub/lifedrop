@@ -252,3 +252,19 @@
 .animate-glow-border {
   animation: glow-border 2.5s ease-in-out infinite;
 }
+
+/* ─── Button Glow ─────────────────────────────────────────── */
+.btn-glow {
+  transition: box-shadow 0.2s ease, transform 0.1s ease;
+}
+
+.btn-glow:hover,
+.btn-glow:focus-visible {
+  box-shadow: 0 0 16px oklch(var(--neon-red) / 0.6), 0 0 32px oklch(var(--neon-red) / 0.25);
+  outline: none;
+}
+
+.btn-glow:active {
+  box-shadow: 0 0 24px oklch(var(--neon-red) / 0.85), 0 0 48px oklch(var(--neon-red) / 0.4);
+  transform: scale(0.98);
+}

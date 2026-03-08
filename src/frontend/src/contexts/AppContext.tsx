@@ -21,6 +21,7 @@ export const translations: Record<Language, Record<string, string>> = {
     register: "Register",
     dashboard: "Dashboard",
     blog: "Blog",
+    camps: "Camps",
     tagline: "Save Lives. Donate Blood.",
     hero_subtitle:
       "Connect with blood donors, hospitals, and blood banks instantly. Every second counts.",
@@ -38,6 +39,7 @@ export const translations: Record<Language, Record<string, string>> = {
     register: "பதிவு செய்",
     dashboard: "டாஷ்போர்டு",
     blog: "வலைப்பதிவு",
+    camps: "முகாம்கள்",
     tagline: "உயிர்களை காப்பாற்றுங்கள். இரத்தம் தானம் செய்யுங்கள்.",
     hero_subtitle:
       "இரத்த தானியர்கள், மருத்துவமனைகள் மற்றும் இரத்த வங்கிகளுடன் உடனடியாக இணையுங்கள்.",
@@ -55,6 +57,7 @@ export const translations: Record<Language, Record<string, string>> = {
     register: "पंजीकरण",
     dashboard: "डैशबोर्ड",
     blog: "ब्लॉग",
+    camps: "शिविर",
     tagline: "जीवन बचाएं। रक्त दान करें।",
     hero_subtitle:
       "रक्त दाताओं, अस्पतालों और ब्लड बैंकों से तुरंत जुड़ें। हर सेकंड मायने रखती है।",
@@ -62,6 +65,21 @@ export const translations: Record<Language, Record<string, string>> = {
     become_donor: "डोनर बनें",
     register_hospital: "अस्पताल पंजीकरण",
   },
+};
+
+// ─── Camp Announcement ────────────────────────────────────────
+export type CampAnnouncement = {
+  id: string;
+  name: string;
+  venue: string;
+  date: string;
+  time: string;
+  expectedDonors: number;
+  organizer: string;
+  contact: string;
+  postedBy: "NGO" | "Blood Bank";
+  postedAt: string;
+  status: "upcoming" | "active" | "completed";
 };
 
 // ─── Registered User (localStorage) ─────────────────────────
@@ -115,6 +133,8 @@ interface AppContextValue {
   isLoadingProfile: boolean;
   setUserProfile: (profile: UserProfile | null) => void;
   refetchProfile: () => void;
+  camps: CampAnnouncement[];
+  addCamp: (camp: CampAnnouncement) => void;
 }
 
 const AppContext = createContext<AppContextValue | undefined>(undefined);
@@ -130,6 +150,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
       return getStoredProfile();
     },
   );
+
+  const [camps, setCamps] = useState<CampAnnouncement[]>([]);
+
+  const addCamp = useCallback((camp: CampAnnouncement) => {
+    setCamps((prev) => [camp, ...prev]);
+  }, []);
 
   const setLanguage = useCallback((lang: Language) => {
     setLanguageState(lang);
@@ -167,6 +193,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
         isLoadingProfile: false,
         setUserProfile,
         refetchProfile,
+        camps,
+        addCamp,
       }}
     >
       {children}

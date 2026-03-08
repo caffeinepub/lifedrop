@@ -240,7 +240,11 @@ export function HomePage() {
                 </Button>
               </Link>
 
-              <Link to="/register" data-ocid="hero.hospital.secondary_button">
+              <Link
+                to="/register"
+                search={{ role: "hospital" }}
+                data-ocid="hero.hospital.secondary_button"
+              >
                 <Button
                   size="lg"
                   variant="ghost"
@@ -482,12 +486,12 @@ export function HomePage() {
                 camps, coordinate volunteers, and track donation events — all
                 from one dashboard.
               </p>
-              <Link to="/register">
-                <Button
-                  variant="outline"
-                  className="border-primary/50"
-                  data-ocid="home.ngo.secondary_button"
-                >
+              <Link
+                to="/register"
+                search={{ role: "ngo" }}
+                data-ocid="home.ngo.secondary_button"
+              >
+                <Button variant="outline" className="border-primary/50">
                   Register as NGO
                   <ChevronRight className="h-4 w-4 ml-2" />
                 </Button>

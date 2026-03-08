@@ -1,21 +1,20 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Calendar, Globe, Loader2, Plus, Users } from "lucide-react";
+import {
+  Calendar,
+  Clock,
+  Globe,
+  Loader2,
+  MapPin,
+  Phone,
+  Plus,
+  Users,
+} from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
+import { type CampAnnouncement, useApp } from "../../contexts/AppContext";
 import { useSearchDonors } from "../../hooks/useQueries";
-
-type Camp = {
-  id: string;
-  name: string;
-  location: string;
-  date: string;
-  expectedDonors: number;
-  organizer: string;
-  contact: string;
-  status: "upcoming" | "active" | "completed";
-};
 
 const statusColors = {
   upcoming: {
@@ -35,8 +34,6 @@ const statusColors = {
   },
 };
 
-const initialCamps: Camp[] = [];
-
 type StoredNGO = {
   orgName?: string;
   regNumber?: string;
@@ -47,6 +44,8 @@ type StoredNGO = {
 };
 
 export function NGODashboard() {
+  const { camps, addCamp } = useApp();
+
   // Read NGO-specific fields saved during registration
   const storedNGO = useMemo((): StoredNGO | null => {
     try {
@@ -57,17 +56,20 @@ export function NGODashboard() {
     }
   }, []);
 
-  const [camps, setCamps] = useState<Camp[]>(initialCamps);
   const [isCreating, setIsCreating] = useState(false);
   const [form, setForm] = useState({
     name: "",
     location: "",
     date: "",
+    time: "",
     expectedDonors: "",
     organizer: "",
     contact: "",
   });
   const [showForm, setShowForm] = useState(false);
+
+  // Filter camps posted by this NGO (or show all for now)
+  const ngoCamps = camps.filter((c) => c.postedBy === "NGO");
 
   // Fetch volunteers
   const { data: volunteers, isLoading: loadingVolunteers } = useSearchDonors(
@@ -82,28 +84,32 @@ export function NGODashboard() {
     setIsCreating(true);
     await new Promise((r) => setTimeout(r, 500));
     const today = new Date().toISOString().split("T")[0];
-    const camp: Camp = {
-      id: `CAMP-${String(camps.length + 1).padStart(3, "0")}`,
+    const camp: CampAnnouncement = {
+      id: `CAMP-NGO-${String(Date.now()).slice(-6)}`,
       name: form.name,
-      location: form.location,
+      venue: form.location,
       date: form.date,
-      expectedDonors: Number.parseInt(form.expectedDonors),
-      organizer: form.organizer,
+      time: form.time,
+      expectedDonors: Number.parseInt(form.expectedDonors) || 0,
+      organizer: form.organizer || storedNGO?.orgName || "NGO",
       contact: form.contact,
+      postedBy: "NGO",
+      postedAt: new Date().toISOString(),
       status: form.date >= today ? "upcoming" : "completed",
     };
-    setCamps((p) => [camp, ...p]);
+    addCamp(camp);
     setForm({
       name: "",
       location: "",
       date: "",
+      time: "",
       expectedDonors: "",
       organizer: "",
       contact: "",
     });
     setShowForm(false);
     setIsCreating(false);
-    toast.success("Blood donation camp created!");
+    toast.success("Blood donation camp announced! Visible to all users.");
   };
 
   return (
@@ -145,14 +151,14 @@ export function NGODashboard() {
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
         {[
-          { label: "Total Camps", value: camps.length },
+          { label: "Total Camps", value: ngoCamps.length },
           {
             label: "Active Camps",
-            value: camps.filter((c) => c.status === "active").length,
+            value: ngoCamps.filter((c) => c.status === "active").length,
           },
           {
             label: "Total Donors Expected",
-            value: camps.reduce((s, c) => s + c.expectedDonors, 0),
+            value: ngoCamps.reduce((s, c) => s + c.expectedDonors, 0),
           },
           { label: "Volunteers Available", value: volunteers?.length ?? "..." },
         ].map((s) => (
@@ -181,6 +187,7 @@ export function NGODashboard() {
           size="sm"
           onClick={() => setShowForm(!showForm)}
           data-ocid="ngo.create_camp.button"
+          className="btn-glow"
           style={{ backgroundColor: "oklch(var(--neon-red))", color: "white" }}
         >
           <Plus className="h-4 w-4 mr-1" />
@@ -194,7 +201,7 @@ export function NGODashboard() {
           onSubmit={handleCreate}
           className="rounded-xl card-dark p-5 mb-6 space-y-4 animate-slide-in-up"
         >
-          <h3 className="font-semibold">Create New Camp</h3>
+          <h3 className="font-semibold">Create New Camp Announcement</h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <Label>Camp Name *</Label>
@@ -210,7 +217,7 @@ export function NGODashboard() {
               />
             </div>
             <div className="space-y-1.5">
-              <Label>Location *</Label>
+              <Label>Venue / Location *</Label>
               <Input
                 placeholder="Community Hall, Anna Nagar"
                 value={form.location}
@@ -232,6 +239,19 @@ export function NGODashboard() {
                 }
                 className="bg-secondary border-border"
                 data-ocid="ngo.date.input"
+                required
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Time *</Label>
+              <Input
+                type="time"
+                value={form.time}
+                onChange={(e) =>
+                  setForm((p) => ({ ...p, time: e.target.value }))
+                }
+                className="bg-secondary border-border"
+                data-ocid="ngo.time.input"
                 required
               />
             </div>
@@ -262,7 +282,7 @@ export function NGODashboard() {
                 required
               />
             </div>
-            <div className="space-y-1.5">
+            <div className="space-y-1.5 sm:col-span-2">
               <Label>Contact *</Label>
               <Input
                 type="tel"
@@ -280,7 +300,7 @@ export function NGODashboard() {
           <div className="flex gap-3">
             <Button
               type="submit"
-              className="flex-1"
+              className="flex-1 btn-glow"
               disabled={isCreating}
               data-ocid="ngo.create_camp.submit_button"
               style={{
@@ -291,10 +311,10 @@ export function NGODashboard() {
               {isCreating ? (
                 <>
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Creating...
+                  Posting...
                 </>
               ) : (
-                "Create Camp"
+                "Post Camp Announcement"
               )}
             </Button>
             <Button
@@ -310,20 +330,20 @@ export function NGODashboard() {
       )}
 
       {/* Camps List */}
-      {camps.length === 0 && (
+      {ngoCamps.length === 0 && (
         <div
           className="rounded-xl card-dark p-8 text-center mb-10"
           data-ocid="ngo.camps.empty_state"
         >
           <div className="text-3xl mb-2">🏕️</div>
           <p className="text-muted-foreground text-sm">
-            No camps created yet. Click "New Camp" to create your first donation
-            camp.
+            No camps announced yet. Click "New Camp" to post your first donation
+            camp — it will be visible to all users.
           </p>
         </div>
       )}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-10">
-        {camps.map((camp, i) => {
+        {ngoCamps.map((camp, i) => {
           const sc = statusColors[camp.status];
           return (
             <div
@@ -346,17 +366,29 @@ export function NGODashboard() {
               </div>
               <div className="space-y-1.5 text-sm text-muted-foreground">
                 <div className="flex items-center gap-2">
-                  <Globe className="h-3.5 w-3.5 flex-shrink-0" />
-                  <span className="truncate">{camp.location}</span>
+                  <MapPin className="h-3.5 w-3.5 flex-shrink-0" />
+                  <span className="truncate">{camp.venue}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <Calendar className="h-3.5 w-3.5 flex-shrink-0" />
                   <span>{camp.date}</span>
+                  {camp.time && (
+                    <>
+                      <Clock className="h-3.5 w-3.5 flex-shrink-0 ml-1" />
+                      <span>{camp.time}</span>
+                    </>
+                  )}
                 </div>
                 <div className="flex items-center gap-2">
                   <Users className="h-3.5 w-3.5 flex-shrink-0" />
                   <span>{camp.expectedDonors} expected donors</span>
                 </div>
+                {camp.contact && (
+                  <div className="flex items-center gap-2">
+                    <Phone className="h-3.5 w-3.5 flex-shrink-0" />
+                    <span>{camp.contact}</span>
+                  </div>
+                )}
               </div>
               <div
                 className="mt-3 pt-3 border-t text-xs text-muted-foreground font-mono"

@@ -13,6 +13,7 @@ import { Navbar } from "./components/Navbar";
 import { RegisteredUsersSidebar } from "./components/RegisteredUsersSidebar";
 import { AppProvider } from "./contexts/AppContext";
 import { BlogPage } from "./pages/BlogPage";
+import { CampsPage } from "./pages/CampsPage";
 import { DonorIdPage } from "./pages/DonorIdPage";
 import { EmergencyRequestPage } from "./pages/EmergencyRequestPage";
 import { HomePage } from "./pages/HomePage";
@@ -136,6 +137,11 @@ const blogRoute = createRoute({
   path: "/blog",
   component: BlogPage,
 });
+const campsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/camps",
+  component: CampsPage,
+});
 const donorIdRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/donor-id/$id",
@@ -197,6 +203,7 @@ const routeTree = rootRoute.addChildren([
   requestRoute,
   searchRoute,
   blogRoute,
+  campsRoute,
   donorIdRoute,
   dashboardRoute,
   donorDashRoute,

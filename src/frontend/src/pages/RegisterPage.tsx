@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
-import { useNavigate } from "@tanstack/react-router";
+import { useNavigate, useRouterState } from "@tanstack/react-router";
 import {
   AlertCircle,
   Building2,
@@ -1592,7 +1592,22 @@ const roleTabs = [
 // ─────────────────────────────────────────────────────────────
 
 export function RegisterPage() {
-  const [activeTab, setActiveTab] = useState(Role.donor);
+  const routerState = useRouterState();
+  const searchParams = new URLSearchParams(routerState.location.search);
+  const roleParam = searchParams.get("role");
+  const validRoles = [
+    "donor",
+    "patient",
+    "hospital",
+    "bloodBank",
+    "ngo",
+    "volunteer",
+  ];
+  const initialTab = (
+    roleParam && validRoles.includes(roleParam) ? roleParam : Role.donor
+  ) as Role;
+
+  const [activeTab, setActiveTab] = useState<Role>(initialTab);
 
   const activeConfig =
     roleTabs.find((r) => r.role === activeTab) ?? roleTabs[0];
