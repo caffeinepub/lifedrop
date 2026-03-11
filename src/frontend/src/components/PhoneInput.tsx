@@ -1,29 +1,29 @@
 import { useEffect, useState } from "react";
 
 const COUNTRY_CODES = [
-  { code: "+91", label: "🇮🇳 +91 India" },
-  { code: "+1", label: "🇺🇸 +1 USA / Canada" },
-  { code: "+44", label: "🇬🇧 +44 UK" },
-  { code: "+61", label: "🇦🇺 +61 Australia" },
-  { code: "+971", label: "🇦🇪 +971 UAE" },
-  { code: "+65", label: "🇸🇬 +65 Singapore" },
-  { code: "+60", label: "🇲🇾 +60 Malaysia" },
-  { code: "+966", label: "🇸🇦 +966 Saudi Arabia" },
-  { code: "+49", label: "🇩🇪 +49 Germany" },
-  { code: "+33", label: "🇫🇷 +33 France" },
-  { code: "+81", label: "🇯🇵 +81 Japan" },
-  { code: "+86", label: "🇨🇳 +86 China" },
-  { code: "+7", label: "🇷🇺 +7 Russia" },
-  { code: "+55", label: "🇧🇷 +55 Brazil" },
-  { code: "+27", label: "🇿🇦 +27 South Africa" },
-  { code: "+234", label: "🇳🇬 +234 Nigeria" },
-  { code: "+254", label: "🇰🇪 +254 Kenya" },
-  { code: "+20", label: "🇪🇬 +20 Egypt" },
-  { code: "+92", label: "🇵🇰 +92 Pakistan" },
-  { code: "+880", label: "🇧🇩 +880 Bangladesh" },
-  { code: "+94", label: "🇱🇰 +94 Sri Lanka" },
-  { code: "+977", label: "🇳🇵 +977 Nepal" },
-  { code: "+64", label: "🇳🇿 +64 New Zealand" },
+  { code: "+91", flag: "🇮🇳" },
+  { code: "+1", flag: "🇺🇸" },
+  { code: "+44", flag: "🇬🇧" },
+  { code: "+61", flag: "🇦🇺" },
+  { code: "+971", flag: "🇦🇪" },
+  { code: "+65", flag: "🇸🇬" },
+  { code: "+60", flag: "🇲🇾" },
+  { code: "+966", flag: "🇸🇦" },
+  { code: "+49", flag: "🇩🇪" },
+  { code: "+33", flag: "🇫🇷" },
+  { code: "+81", flag: "🇯🇵" },
+  { code: "+86", flag: "🇨🇳" },
+  { code: "+7", flag: "🇷🇺" },
+  { code: "+55", flag: "🇧🇷" },
+  { code: "+27", flag: "🇿🇦" },
+  { code: "+234", flag: "🇳🇬" },
+  { code: "+254", flag: "🇰🇪" },
+  { code: "+20", flag: "🇪🇬" },
+  { code: "+92", flag: "🇵🇰" },
+  { code: "+880", flag: "🇧🇩" },
+  { code: "+94", flag: "🇱🇰" },
+  { code: "+977", flag: "🇳🇵" },
+  { code: "+64", flag: "🇳🇿" },
 ];
 
 function parsePhoneValue(value: string): {
@@ -40,7 +40,6 @@ function parsePhoneValue(value: string): {
       return { countryCode: c.code, digits: rest };
     }
   }
-  // fallback: treat whole thing as digits
   return { countryCode: "+91", digits: value.replace(/\D/g, "").slice(0, 10) };
 }
 
@@ -89,23 +88,32 @@ export function PhoneInput({
 
   const showError = touched && digits.length > 0 && digits.length < 10;
 
+  const selectedEntry = COUNTRY_CODES.find((c) => c.code === countryCode);
+
   return (
-    <div className={className}>
-      <div className="flex">
-        <select
-          value={countryCode}
-          onChange={handleCodeChange}
-          disabled={disabled}
-          className="flex-shrink-0 h-10 rounded-l-md border border-border bg-secondary text-foreground text-sm px-2 pr-6 focus:outline-none focus:ring-1 focus:ring-primary appearance-none cursor-pointer"
-          style={{ minWidth: "72px" }}
-          aria-label="Country code"
-        >
-          {COUNTRY_CODES.map((c) => (
-            <option key={c.code} value={c.code}>
-              {c.label}
-            </option>
-          ))}
-        </select>
+    <div className={`w-full ${className ?? ""}`}>
+      <div className="flex w-full min-w-0">
+        {/* Country selector — compact: flag + code only */}
+        <div className="relative flex-shrink-0" style={{ width: "80px" }}>
+          <select
+            value={countryCode}
+            onChange={handleCodeChange}
+            disabled={disabled}
+            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+            aria-label="Country code"
+          >
+            {COUNTRY_CODES.map((c) => (
+              <option key={c.code} value={c.code}>
+                {c.flag} {c.code}
+              </option>
+            ))}
+          </select>
+          <div className="h-14 flex items-center justify-center gap-1 rounded-l-md border border-border bg-secondary text-foreground text-sm font-semibold px-2 pointer-events-none select-none">
+            <span className="text-base">{selectedEntry?.flag}</span>
+            <span>{countryCode}</span>
+          </div>
+        </div>
+        {/* 10-digit number input — takes remaining width */}
         <input
           id={id}
           type="tel"
@@ -118,7 +126,7 @@ export function PhoneInput({
           required={required}
           disabled={disabled}
           data-ocid={dataOcid}
-          className="flex h-10 w-full rounded-r-md border border-l-0 border-border bg-secondary px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary disabled:cursor-not-allowed disabled:opacity-50"
+          className="h-14 min-w-0 flex-1 rounded-r-md border border-l-0 border-border bg-secondary px-4 py-3 text-lg font-semibold text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary disabled:cursor-not-allowed disabled:opacity-50 tracking-widest box-border"
         />
       </div>
       {showError && (
