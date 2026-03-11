@@ -1,11 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { BloodGroup, UrgencyLevel } from "../backend.d";
 import { useActor } from "./useActor";
+import { useDeviceActor } from "./useDeviceActor";
 import { useInternetIdentity } from "./useInternetIdentity";
 
 // ─── Blood Requests ───────────────────────────────────────────
+// getBloodRequests() is now fully public — no auth required.
 export function useBloodRequests() {
-  const { actor, isFetching } = useActor();
+  const { actor, isFetching } = useDeviceActor();
   return useQuery({
     queryKey: ["bloodRequests"],
     queryFn: async () => {
@@ -13,16 +15,17 @@ export function useBloodRequests() {
       try {
         return await actor.getBloodRequests();
       } catch {
-        // Return empty array if system not initialized or access denied
         return [];
       }
     },
     enabled: !!actor && !isFetching,
+    retry: 2,
+    retryDelay: 1000,
   });
 }
 
 export function useCreateBloodRequest() {
-  const { actor } = useActor();
+  const { actor } = useDeviceActor();
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (params: {
@@ -52,7 +55,7 @@ export function useCreateBloodRequest() {
 }
 
 export function useAcceptBloodRequest() {
-  const { actor } = useActor();
+  const { actor } = useDeviceActor();
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (requestId: bigint) => {
@@ -78,7 +81,7 @@ export function useAcceptBloodRequest() {
 }
 
 export function useCompleteBloodRequest() {
-  const { actor } = useActor();
+  const { actor } = useDeviceActor();
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (requestId: bigint) => {
@@ -103,7 +106,23 @@ export function useCompleteBloodRequest() {
   });
 }
 
+export function useDeleteBloodRequest() {
+  const { actor } = useDeviceActor();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (requestId: bigint) => {
+      if (!actor) throw new Error("Not connected to backend");
+      return await actor.deleteBloodRequest(requestId);
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["bloodRequests"] });
+      qc.invalidateQueries({ queryKey: ["stats"] });
+    },
+  });
+}
+
 // ─── Donors ──────────────────────────────────────────────────
+// searchDonorsPublic() is fully public — no auth required
 export function useSearchDonors(
   bloodGroup: BloodGroup | null,
   city: string | null,
@@ -111,23 +130,37 @@ export function useSearchDonors(
   enabled = true,
   searchKey = 0,
 ) {
-  const { actor, isFetching } = useActor();
+  const { actor, isFetching } = useDeviceActor();
   return useQuery({
     queryKey: ["donors", bloodGroup, city, availableOnly, searchKey],
     queryFn: async () => {
       if (!actor) return [];
       try {
-        return await actor.searchDonors(bloodGroup, city, availableOnly);
+        const results = await actor.searchDonorsPublic(
+          bloodGroup,
+          city,
+          null,
+          availableOnly,
+        );
+        return results.map((d) => ({
+          ...d,
+          totalDonations: BigInt(d.totalDonations ?? 0),
+          phone: d.phone ?? "",
+          name: d.name ?? "",
+          city: d.city ?? "",
+        }));
       } catch {
         return [];
       }
     },
     enabled: !!actor && !isFetching && enabled,
+    retry: 2,
+    retryDelay: 1000,
   });
 }
 
 export function useUpdateDonorAvailability() {
-  const { actor } = useActor();
+  const { actor } = useDeviceActor();
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (available: boolean) => {
@@ -157,11 +190,14 @@ export function useAllUsers() {
       }
     },
     enabled: !!actor && !isFetching && !!identity,
+    retry: 2,
+    retryDelay: 1000,
   });
 }
 
+// getAllHospitals() is now fully public — no auth required
 export function useAllHospitals() {
-  const { actor, isFetching } = useActor();
+  const { actor, isFetching } = useDeviceActor();
   return useQuery({
     queryKey: ["allHospitals"],
     queryFn: async () => {
@@ -173,11 +209,13 @@ export function useAllHospitals() {
       }
     },
     enabled: !!actor && !isFetching,
+    retry: 2,
+    retryDelay: 1000,
   });
 }
 
 export function useApproveHospital() {
-  const { actor } = useActor();
+  const { actor } = useDeviceActor();
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (hospitalId: string) => {
@@ -193,7 +231,7 @@ export function useApproveHospital() {
 
 // ─── All Donors (public, no auth required) ───────────────────
 export function useAllDonors() {
-  const { actor, isFetching } = useActor();
+  const { actor, isFetching } = useDeviceActor();
   return useQuery({
     queryKey: ["allDonors"],
     queryFn: async () => {
@@ -213,12 +251,15 @@ export function useAllDonors() {
     },
     enabled: !!actor && !isFetching,
     refetchInterval: 15000,
+    retry: 2,
+    retryDelay: 1000,
   });
 }
 
 // ─── Caller Donor Profile ─────────────────────────────────────
+// getCallerDonorProfile reads from the device identity's principal
 export function useCallerDonorProfile() {
-  const { actor, isFetching } = useActor();
+  const { actor, isFetching } = useDeviceActor();
   return useQuery({
     queryKey: ["callerDonorProfile"],
     queryFn: async () => {
@@ -230,12 +271,14 @@ export function useCallerDonorProfile() {
       }
     },
     enabled: !!actor && !isFetching,
+    retry: 2,
+    retryDelay: 1000,
   });
 }
 
 // ─── Public User List (no auth required) ─────────────────────
 export function usePublicUserList() {
-  const { actor, isFetching } = useActor();
+  const { actor, isFetching } = useDeviceActor();
   return useQuery({
     queryKey: ["publicUserList"],
     queryFn: async () => {
@@ -248,12 +291,13 @@ export function usePublicUserList() {
     },
     enabled: !!actor && !isFetching,
     refetchInterval: 10000,
+    retry: 2,
+    retryDelay: 1000,
   });
 }
 
 // ─── Total Users Count ───────────────────────────────────────
-// getTotalUsers() requires #user permission and fails for anonymous callers.
-// Use publicUserList.length instead for accurate counts.
+// Use publicUserList.length for accurate counts (no separate auth needed)
 export function useTotalUsers() {
   // totalUsers is derived from publicUserList in components
   // Return a placeholder so callers don't break
@@ -262,7 +306,7 @@ export function useTotalUsers() {
 
 // ─── All Donors List (public, no auth required) ───────────────
 export function useAllDonorsList() {
-  const { actor, isFetching } = useActor();
+  const { actor, isFetching } = useDeviceActor();
   return useQuery({
     queryKey: ["allDonorsList"],
     queryFn: async () => {
@@ -283,6 +327,8 @@ export function useAllDonorsList() {
     enabled: !!actor && !isFetching,
     staleTime: 10000,
     refetchInterval: 30000,
+    retry: 2,
+    retryDelay: 1000,
   });
 }
 
@@ -311,7 +357,7 @@ export function useSearchDonorsPublic(
   enabled = true,
   searchKey = 0,
 ) {
-  const { actor, isFetching } = useActor();
+  const { actor, isFetching } = useDeviceActor();
   return useQuery({
     queryKey: [
       "donorsPublic",
@@ -330,7 +376,6 @@ export function useSearchDonorsPublic(
           name,
           availableOnly,
         );
-        // Ensure totalDonations is always a number/bigint to prevent display issues
         return results.map((d) => ({
           ...d,
           totalDonations: BigInt(d.totalDonations ?? 0),
@@ -338,13 +383,14 @@ export function useSearchDonorsPublic(
           name: d.name ?? "",
           city: d.city ?? "",
         }));
-      } catch (err) {
-        console.error("searchDonorsPublic error:", err);
+      } catch {
         return [];
       }
     },
     enabled: !!actor && !isFetching && enabled,
     staleTime: 0,
     gcTime: 0,
+    retry: 2,
+    retryDelay: 1000,
   });
 }

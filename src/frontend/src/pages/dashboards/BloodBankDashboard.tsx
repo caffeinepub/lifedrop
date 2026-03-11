@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
+import { PhoneInput, extractPhoneDigits } from "../../components/PhoneInput";
 import { type CampAnnouncement, useApp } from "../../contexts/AppContext";
 
 type BloodUnit = {
@@ -159,6 +160,12 @@ export function BloodBankDashboard() {
     setIsPostingCamp(true);
     await new Promise((r) => setTimeout(r, 500));
     const today = new Date().toISOString().split("T")[0];
+    const contactDigits = extractPhoneDigits(campForm.contact);
+    if (campForm.contact && contactDigits.length !== 10) {
+      toast.error("Phone number must be exactly 10 digits");
+      setIsPostingCamp(false);
+      return;
+    }
     const camp: CampAnnouncement = {
       id: `CAMP-BB-${String(Date.now()).slice(-6)}`,
       name: campForm.name,
@@ -593,14 +600,10 @@ export function BloodBankDashboard() {
               </div>
               <div className="space-y-1.5">
                 <Label>Contact *</Label>
-                <Input
-                  type="tel"
-                  placeholder="+91 98765 43210"
+                <PhoneInput
                   value={campForm.contact}
-                  onChange={(e) =>
-                    setCampForm((p) => ({ ...p, contact: e.target.value }))
-                  }
-                  className="bg-secondary border-border"
+                  onChange={(v) => setCampForm((p) => ({ ...p, contact: v }))}
+                  className="w-full"
                   data-ocid="bloodbank.camp_contact.input"
                   required
                 />

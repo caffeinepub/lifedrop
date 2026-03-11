@@ -104,6 +104,7 @@ export interface backendInterface {
     assignCallerUserRole(user: Principal, role: UserRole): Promise<void>;
     completeBloodRequest(requestId: bigint): Promise<boolean>;
     createBloodRequest(patientName: string, bloodGroup: BloodGroup, quantityMl: bigint, hospitalName: string, city: string, urgency: UrgencyLevel, contact: string): Promise<bigint>;
+    deleteBloodRequest(requestId: bigint): Promise<boolean>;
     getAllDonorsList(): Promise<Array<DonorPublicInfo>>;
     getAllHospitals(): Promise<Array<HospitalProfile>>;
     getAllUsers(): Promise<Array<User>>;
@@ -124,5 +125,4 @@ export interface backendInterface {
     updateDonorAvailability(available: boolean): Promise<boolean>;
     updateHospitalProfile(licenseNumber: string, hospitalName: string, address: string): Promise<boolean>;
     updateUser(user: User): Promise<void>;
-    upgrade(): Promise<void>;
 }

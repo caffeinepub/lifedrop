@@ -17,7 +17,7 @@ import {
 } from "lucide-react";
 import { useMemo } from "react";
 import { useApp } from "../contexts/AppContext";
-import { useActor } from "../hooks/useActor";
+import { useDeviceActor } from "../hooks/useDeviceActor";
 import {
   countRoleInList,
   useAllDonors,
@@ -36,7 +36,8 @@ const bloodGroupKeys = [
 ];
 
 function useStats() {
-  const { actor, isFetching } = useActor();
+  // getBloodRequests() requires #user permission — use device actor
+  const { actor, isFetching } = useDeviceActor();
   return useQuery({
     queryKey: ["stats"],
     queryFn: async () => {

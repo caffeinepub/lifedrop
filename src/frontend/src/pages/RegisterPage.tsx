@@ -1,3 +1,4 @@
+import { PhoneInput, extractPhoneDigits } from "@/components/PhoneInput";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
@@ -25,7 +26,7 @@ import {
   Users,
 } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { toast } from "sonner";
 import { BloodGroup, Role } from "../backend.d";
 import { addRegisteredUser, useApp } from "../contexts/AppContext";
@@ -233,6 +234,9 @@ function useRegisterLogic(role: Role) {
   const { setUserProfile } = useApp();
   const [status, setStatus] = useState<SubmitStatus>("idle");
   const [errorMsg, setErrorMsg] = useState("");
+  // Keep a ref to the latest actor so async submit can access it after delays
+  const actorRef = useRef(actor);
+  actorRef.current = actor;
 
   const isBusy = status === "registering" || isActorFetching;
 
@@ -240,11 +244,26 @@ function useRegisterLogic(role: Role) {
     data: BaseRegisterResult,
     extra?: ExtraRegisterData,
   ) => {
-    if (!actor) {
-      toast.error(
-        "Connecting to backend... Please wait a moment and try again.",
-      );
-      return;
+    // If actor isn't ready yet, wait up to 8 seconds polling every 500ms
+    let resolvedActor = actorRef.current;
+    if (!resolvedActor) {
+      setStatus("registering");
+      setErrorMsg("");
+      let waited = 0;
+      while (!actorRef.current && waited < 8000) {
+        await new Promise((r) => setTimeout(r, 500));
+        waited += 500;
+      }
+      resolvedActor = actorRef.current;
+      if (!resolvedActor) {
+        setStatus("error");
+        const msg =
+          "Backend is initializing. Please wait a moment and try again.";
+        setErrorMsg(msg);
+        toast.error(msg);
+        setTimeout(() => setStatus("idle"), 6000);
+        return;
+      }
     }
 
     setStatus("registering");
@@ -254,19 +273,39 @@ function useRegisterLogic(role: Role) {
       // Register user — pass actual email and phone to backend
       // Using device actor (unique Ed25519 keypair per browser) so each person
       // gets a unique principal — fixing the "all anonymous = same principal" bug
-      await actor.registerUser(
-        data.name,
-        data.email ?? "",
-        data.phone ?? "",
-        role,
-        data.city,
-        data.bloodGroup ?? null,
-      );
+      const doRegister = async () =>
+        resolvedActor.registerUser(
+          data.name,
+          data.email ?? "",
+          data.phone ?? "",
+          role,
+          data.city,
+          data.bloodGroup ?? null,
+        );
+
+      let registerResult: Awaited<ReturnType<typeof doRegister>>;
+      try {
+        registerResult = await doRegister();
+      } catch (firstErr) {
+        const firstMsg =
+          firstErr instanceof Error ? firstErr.message : String(firstErr);
+        if (
+          firstMsg.toLowerCase().includes("stopped") ||
+          firstMsg.toLowerCase().includes("canister")
+        ) {
+          // Canister may be restarting — wait 2s and retry once
+          await new Promise((r) => setTimeout(r, 2000));
+          registerResult = await doRegister();
+        } else {
+          throw firstErr;
+        }
+      }
+      void registerResult;
 
       // Always call saveCallerUserProfile after registerUser to ensure phone/name/city
       // are updated even if the caller was already registered (idempotent update)
       try {
-        await actor.saveCallerUserProfile({
+        await resolvedActor.saveCallerUserProfile({
           name: data.name,
           email: data.email ?? "",
           phone: data.phone ?? "",
@@ -285,7 +324,7 @@ function useRegisterLogic(role: Role) {
         extra?.hospitalName
       ) {
         try {
-          await actor.updateHospitalProfile(
+          await resolvedActor.updateHospitalProfile(
             extra.licenseNumber,
             extra.hospitalName,
             extra.address ?? data.city,
@@ -339,6 +378,7 @@ function useRegisterLogic(role: Role) {
           bloodGroup: data.bloodGroup,
           city: data.city,
           totalDonations: 0,
+          phone: data.phone ?? "",
         };
         localStorage.setItem(
           `lifedrop_donor_card_${donorId}`,
@@ -420,6 +460,11 @@ function DonorForm() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    const donorPhoneDigits = extractPhoneDigits(phone);
+    if (donorPhoneDigits.length !== 10) {
+      toast.error("Phone number must be exactly 10 digits");
+      return;
+    }
     if (!name || !phone || !city) {
       toast.error("Please fill all required fields");
       return;
@@ -498,13 +543,11 @@ function DonorForm() {
           <Label htmlFor="donor-phone" className="text-sm font-medium">
             Phone *
           </Label>
-          <Input
+          <PhoneInput
             id="donor-phone"
-            type="tel"
-            placeholder="+91 98765 43210"
             value={phone}
-            onChange={(e) => setPhone(e.target.value)}
-            className="bg-secondary border-border"
+            onChange={setPhone}
+            className="w-full"
             data-ocid="register.phone.input"
             required
             disabled={isBusy}
@@ -629,6 +672,11 @@ function PatientForm() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    const patientPhoneDigits = extractPhoneDigits(phone);
+    if (patientPhoneDigits.length !== 10) {
+      toast.error("Phone number must be exactly 10 digits");
+      return;
+    }
     if (!name || !phone || !city) {
       toast.error("Please fill all required fields");
       return;
@@ -706,13 +754,11 @@ function PatientForm() {
           <Label htmlFor="patient-phone" className="text-sm font-medium">
             Phone *
           </Label>
-          <Input
+          <PhoneInput
             id="patient-phone"
-            type="tel"
-            placeholder="+91 98765 43210"
             value={phone}
-            onChange={(e) => setPhone(e.target.value)}
-            className="bg-secondary border-border"
+            onChange={setPhone}
+            className="w-full"
             data-ocid="register.phone.input"
             required
             disabled={isBusy}
@@ -819,6 +865,11 @@ function HospitalForm() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    const hospitalPhoneDigits = extractPhoneDigits(phone);
+    if (hospitalPhoneDigits.length !== 10) {
+      toast.error("Phone number must be exactly 10 digits");
+      return;
+    }
     if (!hospitalName || !licenseNumber || !phone || !city) {
       toast.error("Please fill all required fields");
       return;
@@ -936,13 +987,11 @@ function HospitalForm() {
           <Label htmlFor="hospital-phone" className="text-sm font-medium">
             Phone *
           </Label>
-          <Input
+          <PhoneInput
             id="hospital-phone"
-            type="tel"
-            placeholder="+91 44 2829 0000"
             value={phone}
-            onChange={(e) => setPhone(e.target.value)}
-            className="bg-secondary border-border"
+            onChange={setPhone}
+            className="w-full"
             data-ocid="register.phone.input"
             required
             disabled={isBusy}
@@ -1010,6 +1059,11 @@ function BloodBankForm() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    const bbPhoneDigits = extractPhoneDigits(phone);
+    if (bbPhoneDigits.length !== 10) {
+      toast.error("Phone number must be exactly 10 digits");
+      return;
+    }
     if (!bankName || !licenseNumber || !phone || !city) {
       toast.error("Please fill all required fields");
       return;
@@ -1121,13 +1175,11 @@ function BloodBankForm() {
           <Label htmlFor="bb-phone" className="text-sm font-medium">
             Phone *
           </Label>
-          <Input
+          <PhoneInput
             id="bb-phone"
-            type="tel"
-            placeholder="+91 44 2345 6789"
             value={phone}
-            onChange={(e) => setPhone(e.target.value)}
-            className="bg-secondary border-border"
+            onChange={setPhone}
+            className="w-full"
             data-ocid="register.phone.input"
             required
             disabled={isBusy}
@@ -1210,6 +1262,11 @@ function NGOForm() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    const ngoPhoneDigits = extractPhoneDigits(phone);
+    if (ngoPhoneDigits.length !== 10) {
+      toast.error("Phone number must be exactly 10 digits");
+      return;
+    }
     if (!orgName || !phone || !city) {
       toast.error("Please fill all required fields");
       return;
@@ -1319,13 +1376,11 @@ function NGOForm() {
           <Label htmlFor="ngo-phone" className="text-sm font-medium">
             Phone *
           </Label>
-          <Input
+          <PhoneInput
             id="ngo-phone"
-            type="tel"
-            placeholder="+91 98765 43210"
             value={phone}
-            onChange={(e) => setPhone(e.target.value)}
-            className="bg-secondary border-border"
+            onChange={setPhone}
+            className="w-full"
             data-ocid="register.phone.input"
             required
             disabled={isBusy}
@@ -1385,6 +1440,11 @@ function VolunteerForm() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    const volPhoneDigits = extractPhoneDigits(phone);
+    if (volPhoneDigits.length !== 10) {
+      toast.error("Phone number must be exactly 10 digits");
+      return;
+    }
     if (!name || !phone || !city) {
       toast.error("Please fill all required fields");
       return;
@@ -1458,13 +1518,11 @@ function VolunteerForm() {
           <Label htmlFor="vol-phone" className="text-sm font-medium">
             Phone *
           </Label>
-          <Input
+          <PhoneInput
             id="vol-phone"
-            type="tel"
-            placeholder="+91 98765 43210"
             value={phone}
-            onChange={(e) => setPhone(e.target.value)}
-            className="bg-secondary border-border"
+            onChange={setPhone}
+            className="w-full"
             data-ocid="register.phone.input"
             required
             disabled={isBusy}

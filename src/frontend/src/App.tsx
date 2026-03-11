@@ -13,11 +13,14 @@ import { Navbar } from "./components/Navbar";
 import { RegisteredUsersSidebar } from "./components/RegisteredUsersSidebar";
 import { AppProvider } from "./contexts/AppContext";
 import { BlogPage } from "./pages/BlogPage";
+import { BloodRequestsPage } from "./pages/BloodRequestsPage";
 import { CampsPage } from "./pages/CampsPage";
 import { DonorIdPage } from "./pages/DonorIdPage";
 import { EmergencyRequestPage } from "./pages/EmergencyRequestPage";
 import { HomePage } from "./pages/HomePage";
+import { LeaderboardPage } from "./pages/LeaderboardPage";
 import { LoginPage } from "./pages/LoginPage";
+import { NotificationsPage } from "./pages/NotificationsPage";
 import { RegisterPage } from "./pages/RegisterPage";
 import { SearchPage } from "./pages/SearchPage";
 import { AdminDashboard } from "./pages/dashboards/AdminDashboard";
@@ -28,7 +31,7 @@ import { NGODashboard } from "./pages/dashboards/NGODashboard";
 import { PatientDashboard } from "./pages/dashboards/PatientDashboard";
 import { VolunteerDashboard } from "./pages/dashboards/VolunteerDashboard";
 
-// ─── App Shell with sidebar ───────────────────────────────────
+// ─── App Shell with sidebar ─────────────────────────────────
 function AppShell() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
@@ -142,6 +145,21 @@ const campsRoute = createRoute({
   path: "/camps",
   component: CampsPage,
 });
+const bloodRequestsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/blood-requests",
+  component: BloodRequestsPage,
+});
+const leaderboardRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/leaderboard",
+  component: LeaderboardPage,
+});
+const notificationsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/notifications",
+  component: NotificationsPage,
+});
 const donorIdRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/donor-id/$id",
@@ -204,6 +222,9 @@ const routeTree = rootRoute.addChildren([
   searchRoute,
   blogRoute,
   campsRoute,
+  bloodRequestsRoute,
+  leaderboardRoute,
+  notificationsRoute,
   donorIdRoute,
   dashboardRoute,
   donorDashRoute,

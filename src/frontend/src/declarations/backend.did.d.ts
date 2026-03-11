@@ -103,6 +103,7 @@ export interface _SERVICE {
     [string, BloodGroup, bigint, string, string, UrgencyLevel, string],
     bigint
   >,
+  'deleteBloodRequest' : ActorMethod<[bigint], boolean>,
   'getAllDonorsList' : ActorMethod<[], Array<DonorPublicInfo>>,
   'getAllHospitals' : ActorMethod<[], Array<HospitalProfile>>,
   'getAllUsers' : ActorMethod<[], Array<User>>,
@@ -132,7 +133,6 @@ export interface _SERVICE {
   'updateDonorAvailability' : ActorMethod<[boolean], boolean>,
   'updateHospitalProfile' : ActorMethod<[string, string, string], boolean>,
   'updateUser' : ActorMethod<[User], undefined>,
-  'upgrade' : ActorMethod<[], undefined>,
 }
 export declare const idlService: IDL.ServiceClass;
 export declare const idlInitArgs: IDL.Type[];

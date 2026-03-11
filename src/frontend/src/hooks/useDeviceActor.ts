@@ -5,8 +5,7 @@
  * This gives each browser/device a unique stable Principal, solving the
  * "all anonymous users share 2vxsx-fae" problem in the backend.
  *
- * Use this hook ONLY for registration calls that need a unique identity.
- * Read-only queries can continue to use useActor (anonymous is fine for reads).
+ * The backend has NO access control guards on public functions.
  */
 import { useQuery } from "@tanstack/react-query";
 import { createActorWithConfig } from "../config";
@@ -23,10 +22,14 @@ export function useDeviceActor() {
       return actor;
     },
     staleTime: Number.POSITIVE_INFINITY,
+    retry: 8,
+    retryDelay: (attempt) => Math.min(2000 * 2 ** attempt, 30000),
   });
 
   return {
     actor: deviceQuery.data ?? null,
     isFetching: deviceQuery.isFetching,
+    isError: deviceQuery.isError,
+    status: deviceQuery.status,
   };
 }

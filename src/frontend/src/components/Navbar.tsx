@@ -1,22 +1,34 @@
 import { Button } from "@/components/ui/button";
 import { Link, useRouterState } from "@tanstack/react-router";
-import { AlertTriangle, Droplets, Menu, UserPlus, X } from "lucide-react";
+import {
+  AlertTriangle,
+  Bell,
+  Droplets,
+  Menu,
+  Trophy,
+  UserPlus,
+  X,
+} from "lucide-react";
 import { useState } from "react";
 import { type Language, useApp } from "../contexts/AppContext";
+import { useNotifications } from "../hooks/useNotifications";
 import { cn } from "../lib/utils";
 
 export function Navbar() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const { t, language, setLanguage, userProfile } = useApp();
+  const { unreadCount } = useNotifications();
   const routerState = useRouterState();
   const pathname = routerState.location.pathname;
 
   const navLinks = [
     { href: "/", label: t("home") },
     { href: "/search", label: t("search_donors") },
+    { href: "/blood-requests", label: t("blood_requests") },
     { href: "/camps", label: t("camps") },
     { href: "/request", label: t("emergency") },
     { href: "/blog", label: t("blog") },
+    { href: "/leaderboard", label: "Leaderboard" },
   ];
 
   const getDashboardPath = () => {
@@ -34,9 +46,11 @@ export function Navbar() {
   };
 
   const langs: { code: Language; label: string }[] = [
-    { code: "en", label: "EN" },
+    { code: "en", label: "English" },
     { code: "ta", label: "தமிழ்" },
     { code: "hi", label: "हिंदी" },
+    { code: "kn", label: "ಕನ್ನಡ" },
+    { code: "ml", label: "മലയാളം" },
   ];
 
   return (
@@ -71,7 +85,7 @@ export function Navbar() {
               to={link.href}
               data-ocid={`nav.${link.href.replace("/", "") || "home"}.link`}
               className={cn(
-                "px-3 py-2 rounded-md text-sm font-medium transition-colors",
+                "px-3 py-2 rounded-md text-sm font-medium transition-colors flex items-center gap-1",
                 pathname === link.href
                   ? "text-primary"
                   : "text-muted-foreground hover:text-foreground",
@@ -85,7 +99,10 @@ export function Navbar() {
               }
             >
               {link.href === "/request" && (
-                <AlertTriangle className="inline h-3.5 w-3.5 mr-1" />
+                <AlertTriangle className="h-3.5 w-3.5" />
+              )}
+              {link.href === "/leaderboard" && (
+                <Trophy className="h-3.5 w-3.5" />
               )}
               {link.label}
             </Link>
@@ -95,24 +112,64 @@ export function Navbar() {
         {/* Right Side */}
         <div className="hidden md:flex items-center gap-3">
           {/* Language switcher */}
-          <div className="flex items-center gap-1 border border-border rounded-full px-2 py-0.5">
-            {langs.map((l, i) => (
-              <button
-                type="button"
-                key={l.code}
-                onClick={() => setLanguage(l.code)}
-                className={cn(
-                  "text-xs px-1.5 py-0.5 rounded-full transition-colors",
-                  language === l.code
-                    ? "text-foreground font-semibold"
-                    : "text-muted-foreground hover:text-foreground",
-                  i < langs.length - 1 && "border-r border-border/50 pr-1.5",
-                )}
-              >
+          <select
+            value={language}
+            onChange={(e) => setLanguage(e.target.value as Language)}
+            data-ocid="nav.language.select"
+            className="text-xs rounded-lg px-2 py-1.5 border transition-colors cursor-pointer outline-none"
+            style={{
+              backgroundColor: "oklch(var(--card))",
+              color: "oklch(var(--foreground))",
+              borderColor: "oklch(var(--border))",
+            }}
+            onFocus={(e) => {
+              e.currentTarget.style.borderColor = "oklch(var(--neon-red))";
+              e.currentTarget.style.boxShadow =
+                "0 0 0 2px oklch(var(--neon-red) / 0.2)";
+            }}
+            onBlur={(e) => {
+              e.currentTarget.style.borderColor = "oklch(var(--border))";
+              e.currentTarget.style.boxShadow = "0 0 0 0 transparent";
+            }}
+          >
+            {langs.map((l) => (
+              <option key={l.code} value={l.code}>
                 {l.label}
-              </button>
+              </option>
             ))}
-          </div>
+          </select>
+
+          {/* Notification bell */}
+          <Link to="/notifications" data-ocid="nav.notifications.link">
+            <button
+              type="button"
+              className="relative p-1.5 rounded-lg transition-colors hover:bg-secondary"
+              aria-label="Notifications"
+            >
+              <Bell
+                className="h-4.5 w-4.5"
+                style={{
+                  color:
+                    unreadCount > 0
+                      ? "oklch(var(--neon-red))"
+                      : "oklch(var(--muted-foreground))",
+                  width: "1.1rem",
+                  height: "1.1rem",
+                }}
+              />
+              {unreadCount > 0 && (
+                <span
+                  className="absolute -top-0.5 -right-0.5 flex items-center justify-center w-4 h-4 rounded-full text-[10px] font-black animate-pulse"
+                  style={{
+                    backgroundColor: "oklch(var(--neon-red))",
+                    color: "white",
+                  }}
+                >
+                  {unreadCount > 9 ? "9+" : unreadCount}
+                </span>
+              )}
+            </button>
+          </Link>
 
           {userProfile ? (
             <Link to={getDashboardPath()}>
@@ -172,34 +229,58 @@ export function Navbar() {
                 to={link.href}
                 onClick={() => setMobileOpen(false)}
                 className={cn(
-                  "block px-3 py-2 rounded-md text-sm font-medium transition-colors",
+                  "flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors",
                   pathname === link.href
                     ? "text-primary bg-primary/10"
                     : "text-muted-foreground hover:text-foreground hover:bg-secondary",
                 )}
               >
+                {link.href === "/leaderboard" && (
+                  <Trophy className="h-3.5 w-3.5" />
+                )}
                 {link.label}
               </Link>
             ))}
+            {/* Mobile: notifications link */}
+            <Link
+              to="/notifications"
+              onClick={() => setMobileOpen(false)}
+              className="flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-secondary"
+              data-ocid="nav.mobile.notifications.link"
+            >
+              <Bell className="h-3.5 w-3.5" />
+              Notifications
+              {unreadCount > 0 && (
+                <span
+                  className="ml-auto inline-flex items-center justify-center w-5 h-5 rounded-full text-[10px] font-black"
+                  style={{
+                    backgroundColor: "oklch(var(--neon-red))",
+                    color: "white",
+                  }}
+                >
+                  {unreadCount}
+                </span>
+              )}
+            </Link>
             <div className="pt-2 flex flex-col gap-2">
               {/* Language switcher mobile */}
-              <div className="flex items-center gap-2 px-3">
+              <select
+                value={language}
+                onChange={(e) => setLanguage(e.target.value as Language)}
+                data-ocid="nav.mobile.language.select"
+                className="w-full text-sm rounded-lg px-3 py-2 border outline-none cursor-pointer"
+                style={{
+                  backgroundColor: "oklch(var(--card))",
+                  color: "oklch(var(--foreground))",
+                  borderColor: "oklch(var(--border))",
+                }}
+              >
                 {langs.map((l) => (
-                  <button
-                    type="button"
-                    key={l.code}
-                    onClick={() => setLanguage(l.code)}
-                    className={cn(
-                      "text-sm px-2 py-1 rounded transition-colors",
-                      language === l.code
-                        ? "font-semibold text-primary"
-                        : "text-muted-foreground",
-                    )}
-                  >
+                  <option key={l.code} value={l.code}>
                     {l.label}
-                  </button>
+                  </option>
                 ))}
-              </div>
+              </select>
               {userProfile ? (
                 <Link
                   to={getDashboardPath()}

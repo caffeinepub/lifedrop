@@ -27,7 +27,7 @@ import {
 import { useMemo, useState } from "react";
 import type { DonorPublicInfo } from "../backend.d";
 import { BloodGroup } from "../backend.d";
-import { useActor } from "../hooks/useActor";
+import { useDeviceActor } from "../hooks/useDeviceActor";
 import { useAllDonorsList } from "../hooks/useQueries";
 
 const bloodGroupOptions = [
@@ -283,7 +283,7 @@ export function SearchPage() {
   const [city, setCity] = useState("");
   const [availableOnly, setAvailableOnly] = useState(false);
 
-  const { actor, isFetching: isActorFetching } = useActor();
+  const { actor, isFetching: isActorFetching } = useDeviceActor();
   const isConnected = !!actor && !isActorFetching;
 
   // Load ALL donors on page open — no button press needed

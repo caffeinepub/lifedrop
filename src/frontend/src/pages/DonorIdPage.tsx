@@ -1,8 +1,15 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useParams } from "@tanstack/react-router";
-import { Award, Download, Droplets, Share2 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import {
+  Award,
+  Download,
+  Droplets,
+  MessageCircle,
+  Phone,
+  Share2,
+} from "lucide-react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
 const bloodGroupColors: Record<string, string> = {
@@ -66,11 +73,16 @@ function getBadgeLabel(n: number) {
   return "New Donor";
 }
 
+function stripToDigits(phone: string): string {
+  return phone.replace(/\D/g, "");
+}
+
 interface DonorCardData {
   name: string;
   bloodGroup: string;
   city: string;
   totalDonations: number;
+  phone?: string;
   joinedDate?: string;
 }
 
@@ -84,6 +96,7 @@ function loadDonorCardData(id: string): DonorCardData | null {
         bloodGroup?: string;
         city?: string;
         totalDonations?: number;
+        phone?: string;
       };
       if (parsed.name) {
         const bloodGroup = parsed.bloodGroup
@@ -94,6 +107,7 @@ function loadDonorCardData(id: string): DonorCardData | null {
           bloodGroup,
           city: parsed.city ?? "—",
           totalDonations: parsed.totalDonations ?? 0,
+          phone: parsed.phone ?? "",
         };
       }
     }
@@ -111,6 +125,7 @@ function loadDonorCardData(id: string): DonorCardData | null {
           name?: string;
           bloodGroup?: string;
           city?: string;
+          phone?: string;
         };
         let totalDonations = 0;
         try {
@@ -128,6 +143,7 @@ function loadDonorCardData(id: string): DonorCardData | null {
             bloodGroup,
             city: profile.city ?? "—",
             totalDonations,
+            phone: profile.phone ?? "",
           };
         }
       }
@@ -199,6 +215,8 @@ export function DonorIdPage() {
 
   const bgColor =
     bloodGroupColors[donor.bloodGroup] ?? "oklch(var(--neon-red))";
+  const phoneDigits = stripToDigits(donor.phone ?? "");
+  const hasPhone = phoneDigits.length >= 7;
 
   return (
     <main className="container mx-auto px-4 py-12 max-w-md">
@@ -269,6 +287,24 @@ export function DonorIdPage() {
                 </div>
                 <div className="font-semibold text-sm">{donor.city}</div>
               </div>
+
+              {/* Phone */}
+              {hasPhone && (
+                <div className="mb-4">
+                  <div className="text-xs uppercase tracking-wider text-muted-foreground mb-1">
+                    Phone
+                  </div>
+                  <a
+                    href={`tel:${donor.phone}`}
+                    className="font-semibold text-sm flex items-center gap-1 hover:underline"
+                    style={{ color: bgColor }}
+                    data-ocid="donor_id.phone.link"
+                  >
+                    <Phone className="h-3 w-3" />
+                    {donor.phone}
+                  </a>
+                </div>
+              )}
 
               {/* Donations */}
               <div className="mb-4">
@@ -342,8 +378,46 @@ export function DonorIdPage() {
         </div>
       </div>
 
+      {/* WhatsApp & Phone action buttons */}
+      {hasPhone && (
+        <div className="flex gap-3 mt-4">
+          <a
+            href={`tel:${donor.phone}`}
+            className="flex-1"
+            data-ocid="donor_id.call.button"
+          >
+            <Button
+              variant="outline"
+              className="w-full"
+              style={{
+                borderColor: bgColor.replace(")", " / 0.4)"),
+                color: bgColor,
+              }}
+            >
+              <Phone className="h-4 w-4 mr-2" />
+              Call Donor
+            </Button>
+          </a>
+          <a
+            href={`https://wa.me/${phoneDigits}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex-1"
+            data-ocid="donor_id.whatsapp.button"
+          >
+            <Button
+              className="w-full"
+              style={{ backgroundColor: "#25D366", color: "white" }}
+            >
+              <MessageCircle className="h-4 w-4 mr-2" />
+              WhatsApp
+            </Button>
+          </a>
+        </div>
+      )}
+
       {/* Actions */}
-      <div className="flex gap-3 mt-6">
+      <div className="flex gap-3 mt-3">
         <Button
           variant="outline"
           className="flex-1"

@@ -8,7 +8,7 @@ import {
 import type { UserProfile } from "../backend.d";
 
 // ─── Language ────────────────────────────────────────────────
-export type Language = "en" | "ta" | "hi";
+export type Language = "en" | "ta" | "hi" | "kn" | "ml";
 
 export const translations: Record<Language, Record<string, string>> = {
   en: {
@@ -22,6 +22,7 @@ export const translations: Record<Language, Record<string, string>> = {
     dashboard: "Dashboard",
     blog: "Blog",
     camps: "Camps",
+    blood_requests: "Blood Requests",
     tagline: "Save Lives. Donate Blood.",
     hero_subtitle:
       "Connect with blood donors, hospitals, and blood banks instantly. Every second counts.",
@@ -40,6 +41,7 @@ export const translations: Record<Language, Record<string, string>> = {
     dashboard: "டாஷ்போர்டு",
     blog: "வலைப்பதிவு",
     camps: "முகாம்கள்",
+    blood_requests: "இரத்த கோரிக்கைகள்",
     tagline: "உயிர்களை காப்பாற்றுங்கள். இரத்தம் தானம் செய்யுங்கள்.",
     hero_subtitle:
       "இரத்த தானியர்கள், மருத்துவமனைகள் மற்றும் இரத்த வங்கிகளுடன் உடனடியாக இணையுங்கள்.",
@@ -58,12 +60,49 @@ export const translations: Record<Language, Record<string, string>> = {
     dashboard: "डैशबोर्ड",
     blog: "ब्लॉग",
     camps: "शिविर",
+    blood_requests: "रक्त अनुरोध",
     tagline: "जीवन बचाएं। रक्त दान करें।",
     hero_subtitle:
       "रक्त दाताओं, अस्पतालों और ब्लड बैंकों से तुरंत जुड़ें। हर सेकंड मायने रखती है।",
     emergency_btn: "🩸 आपातकालीन रक्त अनुरोध",
     become_donor: "डोनर बनें",
     register_hospital: "अस्पताल पंजीकरण",
+  },
+  kn: {
+    home: "ಮುಖಪುಟ",
+    donate: "ರಕ್ತದಾನ",
+    emergency: "ತುರ್ತು",
+    login: "ಲಾಗಿನ್",
+    logout: "ಲಾಗ್‌ಔಟ್",
+    search_donors: "ದಾನಿಗಳನ್ನು ಹುಡುಕಿ",
+    register: "ನೋಂದಣಿ",
+    dashboard: "ಡ್ಯಾಶ್‌ಬೋರ್ಡ್",
+    blog: "ಬ್ಲಾಗ್",
+    camps: "ಶಿಬಿರಗಳು",
+    blood_requests: "ರಕ್ತ ವಿನಂತಿಗಳು",
+    tagline: "ಜೀವಗಳನ್ನು ಉಳಿಸಿ. ರಕ್ತ ದಾನ ಮಾಡಿ.",
+    hero_subtitle: "ರಕ್ತ ದಾನಿಗಳು, ಆಸ್ಪತ್ರೆಗಳು ಮತ್ತು ರಕ್ತ ಬ್ಯಾಂಕ್‌ಗಳೊಂದಿಗೆ ತಕ್ಷಣ ಸಂಪರ್ಕ ಸಾಧಿಸಿ.",
+    emergency_btn: "🩸 ತುರ್ತು ರಕ್ತ ವಿನಂತಿ",
+    become_donor: "ದಾನಿಯಾಗಿ",
+    register_hospital: "ಆಸ್ಪತ್ರೆ ನೋಂದಣಿ",
+  },
+  ml: {
+    home: "ഹോം",
+    donate: "രക്തദാനം",
+    emergency: "അടിയന്തരം",
+    login: "ലോഗിൻ",
+    logout: "ലോഗ്ഔട്ട്",
+    search_donors: "ദാതാക്കളെ കണ്ടെത്തുക",
+    register: "രജിസ്റ്റർ",
+    dashboard: "ഡാഷ്ബോർഡ്",
+    blog: "ബ്ലോഗ്",
+    camps: "ക്യാമ്പുകൾ",
+    blood_requests: "രക്ത അഭ്യർത്ഥനകൾ",
+    tagline: "ജീവൻ രക്ഷിക്കൂ. രക്തദാനം ചെയ്യൂ.",
+    hero_subtitle: "രക്തദാതാക്കൾ, ആശുപത്രികൾ, ബ്ലഡ് ബാങ്കുകൾ എന്നിവരുമായി ഉടനടി ബന്ധപ്പെടുക.",
+    emergency_btn: "🩸 അടിയന്തര രക്ത അഭ്യർത്ഥന",
+    become_donor: "ദാതാവാകൂ",
+    register_hospital: "ആശുപത്രി രജിസ്ട്രേഷൻ",
   },
 };
 
@@ -179,7 +218,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const refetchProfile = useCallback(() => {
-    // Re-read from localStorage
     setUserProfileState(getStoredProfile());
   }, []);
 

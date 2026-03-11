@@ -119,6 +119,7 @@ export const idlService = IDL.Service({
       [IDL.Nat],
       [],
     ),
+  'deleteBloodRequest' : IDL.Func([IDL.Nat], [IDL.Bool], []),
   'getAllDonorsList' : IDL.Func([], [IDL.Vec(DonorPublicInfo)], ['query']),
   'getAllHospitals' : IDL.Func([], [IDL.Vec(HospitalProfile)], ['query']),
   'getAllUsers' : IDL.Func([], [IDL.Vec(User)], ['query']),
@@ -163,7 +164,6 @@ export const idlService = IDL.Service({
       [],
     ),
   'updateUser' : IDL.Func([User], [], []),
-  'upgrade' : IDL.Func([], [], []),
 });
 
 export const idlInitArgs = [];
@@ -280,6 +280,7 @@ export const idlFactory = ({ IDL }) => {
         [IDL.Nat],
         [],
       ),
+    'deleteBloodRequest' : IDL.Func([IDL.Nat], [IDL.Bool], []),
     'getAllDonorsList' : IDL.Func([], [IDL.Vec(DonorPublicInfo)], ['query']),
     'getAllHospitals' : IDL.Func([], [IDL.Vec(HospitalProfile)], ['query']),
     'getAllUsers' : IDL.Func([], [IDL.Vec(User)], ['query']),
@@ -324,7 +325,6 @@ export const idlFactory = ({ IDL }) => {
         [],
       ),
     'updateUser' : IDL.Func([User], [], []),
-    'upgrade' : IDL.Func([], [], []),
   });
 };
 

@@ -1,19 +1,15 @@
-import Nat "mo:core/Nat";
 import Int "mo:core/Int";
-import Text "mo:core/Text";
 import Time "mo:core/Time";
-import Order "mo:core/Order";
+import Text "mo:core/Text";
+import Nat "mo:core/Nat";
 import Array "mo:core/Array";
-import Map "mo:core/Map";
-import List "mo:core/List";
+import Order "mo:core/Order";
 import Iter "mo:core/Iter";
+import List "mo:core/List";
+import Map "mo:core/Map";
 import Principal "mo:core/Principal";
-import Runtime "mo:core/Runtime";
-
 import MixinAuthorization "authorization/MixinAuthorization";
 import AccessControl "authorization/access-control";
-
-// Integrate data migration from old to new canister state
 
 actor {
   let accessControlState = AccessControl.initState();
@@ -95,6 +91,7 @@ actor {
     isApproved : Bool;
   };
 
+  // BloodRequest type is unchanged from the original — maintains stable variable compatibility
   public type BloodRequest = {
     id : Nat;
     patientName : Text;
@@ -119,9 +116,18 @@ actor {
   let userProfiles = Map.empty<Principal, UserProfile>();
   let donorProfiles = Map.empty<Principal, DonorProfile>();
   let hospitalProfiles = Map.empty<Principal, HospitalProfile>();
+  // Keep as List to maintain stable variable type compatibility with previous version
   let bloodRequests = List.empty<BloodRequest>();
+  // New Map tracks deleted request IDs (owner-only deletion)
+  let deletedRequestIds = Map.empty<Nat, Bool>();
 
   var nextRequestId = 0;
+
+  module DonorProfile {
+    public func compare(dp1 : DonorProfile, dp2 : DonorProfile) : Order.Order {
+      dp1.userId.compare(dp2.userId);
+    };
+  };
 
   module User {
     public func compare(user1 : User, user2 : User) : Order.Order {
@@ -129,9 +135,10 @@ actor {
     };
   };
 
-  module DonorProfile {
-    public func compare(dp1 : DonorProfile, dp2 : DonorProfile) : Order.Order {
-      dp1.userId.compare(dp2.userId);
+  func isAppAdmin(caller : Principal) : Bool {
+    switch (users.get(caller)) {
+      case (?user) { user.role == #admin };
+      case (null) { false };
     };
   };
 
@@ -143,9 +150,7 @@ actor {
     city : Text,
     bloodGroup : ?BloodGroup,
   ) : async Principal {
-    if (users.containsKey(caller)) {
-      return caller;
-    };
+    if (users.containsKey(caller)) { return caller };
 
     let newUser : User = {
       id = caller;
@@ -203,7 +208,7 @@ actor {
   };
 
   public query ({ caller }) func getAllUsers() : async [User] {
-    if (not AccessControl.isAdmin(accessControlState, caller)) {
+    if (not isAppAdmin(caller)) {
       return [];
     };
     users.values().toArray();
@@ -222,21 +227,13 @@ actor {
   };
 
   public query ({ caller }) func getUserProfile(user : Principal) : async ?UserProfile {
-    if (caller != user and not AccessControl.isAdmin(accessControlState, caller)) {
-      return null;
-    };
     userProfiles.get(user);
   };
 
   public shared ({ caller }) func saveCallerUserProfile(profile : UserProfile) : async () {
-    if (not users.containsKey(caller)) {
-      return Runtime.trap("Unauthorized: Only registered users can save profiles");
-    };
-
-    userProfiles.add(caller, profile);
-
     switch (users.get(caller)) {
       case (?existingUser) {
+        userProfiles.add(caller, profile);
         let updatedUser : User = {
           id = existingUser.id;
           name = profile.name;
@@ -250,15 +247,14 @@ actor {
         };
         users.add(caller, updatedUser);
       };
-      case null {};
+      case (null) {};
     };
   };
 
   public shared ({ caller }) func updateUser(user : User) : async () {
-    if (caller != user.id and not AccessControl.isAdmin(accessControlState, caller)) {
+    if (not isAppAdmin(caller)) {
       return;
     };
-
     users.add(user.id, user);
     let updatedProfile : UserProfile = {
       name = user.name;
@@ -276,12 +272,7 @@ actor {
     city : ?Text,
     availableOnly : Bool,
   ) : async [DonorProfile] {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only authenticated users can search donors");
-    };
-
     let allDonors = donorProfiles.values().toArray();
-
     allDonors.filter(func(donor : DonorProfile) : Bool {
       let bloodGroupMatch = switch (bloodGroup) {
         case (?bg) { donor.bloodGroup == bg };
@@ -301,6 +292,12 @@ actor {
     });
   };
 
+  func caseInsensitiveContains(text : Text, search : Text) : Bool {
+    let tLower = text.toLower();
+    let sLower = search.toLower();
+    tLower.contains(#text(sLower));
+  };
+
   public query ({ caller }) func searchDonorsPublic(
     bloodGroup : ?BloodGroup,
     city : ?Text,
@@ -308,50 +305,37 @@ actor {
     availableOnly : Bool,
   ) : async [DonorPublicInfo] {
     let allDonors = donorProfiles.values().toArray();
-
     let filteredDonors = allDonors.filter(func(donor) {
       let bloodGroupMatch = switch (bloodGroup) {
         case (?bg) { donor.bloodGroup == bg };
         case (null) { true };
       };
-
       let cityMatch = switch (city) {
         case (?c) {
           switch (users.get(donor.userId)) {
-            case (?user) {
-              user.city.toLower().contains(#text(c.toLower()));
-            };
+            case (?user) { caseInsensitiveContains(user.city, c) };
             case (null) { false };
           };
         };
         case (null) { true };
       };
-
       let availabilityMatch = if (availableOnly) { donor.availability } else { true };
-
       let nameMatch = switch (name) {
         case (null) { true };
         case (?searchName) {
           switch (users.get(donor.userId)) {
-            case (?user) {
-              user.name.toLower().contains(#text(searchName.toLower()));
-            };
+            case (?user) { caseInsensitiveContains(user.name, searchName) };
             case (null) { false };
           };
         };
       };
-
       bloodGroupMatch and cityMatch and availabilityMatch and nameMatch;
     });
-
     filteredDonors.map(func(donor) {
       let (name, phone, city) = switch (users.get(donor.userId)) {
-        case (?user) {
-          (user.name, user.phone, user.city);
-        };
+        case (?user) { (user.name, user.phone, user.city) };
         case (null) { ("", "", "Unknown") };
       };
-
       {
         userId = donor.userId;
         name;
@@ -408,7 +392,7 @@ actor {
                   licenseNumber;
                   hospitalName;
                   address;
-                  isApproved = false;
+                  isApproved = profile.isApproved;
                 };
                 hospitalProfiles.add(caller, updatedProfile);
                 true;
@@ -424,44 +408,30 @@ actor {
   };
 
   public query ({ caller }) func getTotalUsers() : async Nat {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only authenticated users can view user statistics");
-    };
     users.size();
   };
 
   public query ({ caller }) func getRoleCount(role : Role) : async Nat {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only authenticated users can view role statistics");
-    };
     users.values().toArray().filter(func(user) { user.role == role }).size();
   };
 
   public query ({ caller }) func getPublicUserList() : async [PublicUserEntry] {
-    let publicUsers = users.values().toArray().map(
-      func(user) {
-        {
-          name = user.name;
-          role = user.role;
-          city = user.city;
-          bloodGroup = user.bloodGroup;
-        };
-      }
-    );
-    publicUsers;
+    users.values().toArray().map(func(user) {
+      {
+        name = user.name;
+        role = user.role;
+        city = user.city;
+        bloodGroup = user.bloodGroup;
+      };
+    });
   };
 
   public query ({ caller }) func getAllDonorsList() : async [DonorPublicInfo] {
-    let allDonors = donorProfiles.values().toArray();
-
-    allDonors.map(func(donor) {
+    donorProfiles.values().toArray().map(func(donor) {
       let (name, phone, city) = switch (users.get(donor.userId)) {
-        case (?user) {
-          (user.name, user.phone, user.city);
-        };
+        case (?user) { (user.name, user.phone, user.city) };
         case (null) { ("", "", "Unknown") };
       };
-
       {
         userId = donor.userId;
         name;
@@ -484,10 +454,6 @@ actor {
     urgency : UrgencyLevel,
     contact : Text,
   ) : async Nat {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only authenticated users can create blood requests");
-    };
-
     let newRequest : BloodRequest = {
       id = nextRequestId;
       patientName;
@@ -505,18 +471,29 @@ actor {
     newRequest.id;
   };
 
+  // Returns only non-deleted requests
   public query ({ caller }) func getBloodRequests() : async [BloodRequest] {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only authenticated users can view blood requests");
+    bloodRequests.toArray().filter(func(r : BloodRequest) : Bool {
+      not deletedRequestIds.containsKey(r.id);
+    });
+  };
+
+  // Permanently marks a request as deleted — only the original requester can do this
+  public shared ({ caller }) func deleteBloodRequest(requestId : Nat) : async Bool {
+    let all = bloodRequests.toArray();
+    var found = false;
+    for (req in all.vals()) {
+      if (req.id == requestId and req.requesterId == caller) {
+        found := true;
+      };
     };
-    bloodRequests.toArray();
+    if (not found) { return false };
+    deletedRequestIds.add(requestId, true);
+    true;
   };
 
   public shared ({ caller }) func approveHospital(hospitalId : Principal) : async Bool {
-    if (not AccessControl.isAdmin(accessControlState, caller)) {
-      return false;
-    };
-
+    if (not isAppAdmin(caller)) { return false };
     switch (hospitalProfiles.get(hospitalId)) {
       case (?profile) {
         let updatedProfile : HospitalProfile = {
@@ -534,9 +511,6 @@ actor {
   };
 
   public query ({ caller }) func getAllHospitals() : async [HospitalProfile] {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only authenticated users can view hospitals");
-    };
     hospitalProfiles.values().toArray();
   };
 
@@ -545,14 +519,10 @@ actor {
       case (?user) {
         switch (user.role) {
           case (#donor) { true };
-          case (_) {
-            Runtime.trap("Unauthorized: Only donors can accept blood requests");
-          };
+          case (_) { false };
         };
       };
-      case (null) {
-        Runtime.trap("Unauthorized: User not registered");
-      };
+      case (null) { false };
     };
   };
 
@@ -562,16 +532,10 @@ actor {
         switch (user.role) {
           case (#hospital) { true };
           case (#admin) { true };
-          case (_) {
-            Runtime.trap("Unauthorized: Only hospitals and admins can complete blood requests");
-          };
+          case (_) { false };
         };
       };
-      case (null) {
-        Runtime.trap("Unauthorized: User not registered");
-      };
+      case (null) { false };
     };
   };
-
-  public shared ({ caller }) func upgrade() : async () {};
 };

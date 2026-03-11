@@ -14,6 +14,7 @@ import { AlertTriangle, CheckCircle2, Clock, Loader2 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { BloodGroup, UrgencyLevel } from "../backend.d";
+import { PhoneInput, extractPhoneDigits } from "../components/PhoneInput";
 
 import { useCreateBloodRequest } from "../hooks/useQueries";
 
@@ -80,6 +81,11 @@ export function EmergencyRequestPage() {
       toast.error("Please fill all required fields");
       return;
     }
+    const contactDigits = extractPhoneDigits(form.contact);
+    if (form.contact && contactDigits.length !== 10) {
+      toast.error("Phone number must be exactly 10 digits");
+      return;
+    }
     try {
       const id = await createRequest.mutateAsync({
         patientName: form.patientName,
@@ -92,8 +98,24 @@ export function EmergencyRequestPage() {
       });
       setSuccessId(id);
       toast.success("Emergency blood request submitted!");
-    } catch {
-      toast.error("Failed to submit request. Please try again.");
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      const lower = msg.toLowerCase();
+      if (lower.includes("stopped") || lower.includes("canister")) {
+        toast.error(
+          "Backend is temporarily unavailable. Please try again in a moment.",
+        );
+      } else if (lower.includes("network") || lower.includes("fetch")) {
+        toast.error(
+          "Network error. Please check your connection and try again.",
+        );
+      } else if (lower.includes("connected") || lower.includes("actor")) {
+        toast.error(
+          "Still connecting to backend. Please wait a moment and try again.",
+        );
+      } else {
+        toast.error("Failed to submit request. Please try again.");
+      }
     }
   };
 
@@ -345,15 +367,11 @@ export function EmergencyRequestPage() {
 
             <div className="space-y-2">
               <Label htmlFor="contact">Contact Number *</Label>
-              <Input
+              <PhoneInput
                 id="contact"
-                type="tel"
-                placeholder="+91 98765 43210"
                 value={form.contact}
-                onChange={(e) =>
-                  setForm((p) => ({ ...p, contact: e.target.value }))
-                }
-                className="bg-secondary border-border"
+                onChange={(v) => setForm((p) => ({ ...p, contact: v }))}
+                className="w-full"
                 data-ocid="request.contact.input"
                 required
               />

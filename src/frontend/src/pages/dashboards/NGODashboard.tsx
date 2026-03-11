@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
+import { PhoneInput, extractPhoneDigits } from "../../components/PhoneInput";
 import { type CampAnnouncement, useApp } from "../../contexts/AppContext";
 import { useSearchDonors } from "../../hooks/useQueries";
 
@@ -84,6 +85,12 @@ export function NGODashboard() {
     setIsCreating(true);
     await new Promise((r) => setTimeout(r, 500));
     const today = new Date().toISOString().split("T")[0];
+    const contactDigits = extractPhoneDigits(form.contact);
+    if (form.contact && contactDigits.length !== 10) {
+      toast.error("Phone number must be exactly 10 digits");
+      setIsCreating(false);
+      return;
+    }
     const camp: CampAnnouncement = {
       id: `CAMP-NGO-${String(Date.now()).slice(-6)}`,
       name: form.name,
@@ -284,14 +291,10 @@ export function NGODashboard() {
             </div>
             <div className="space-y-1.5 sm:col-span-2">
               <Label>Contact *</Label>
-              <Input
-                type="tel"
-                placeholder="+91 98765 43210"
+              <PhoneInput
                 value={form.contact}
-                onChange={(e) =>
-                  setForm((p) => ({ ...p, contact: e.target.value }))
-                }
-                className="bg-secondary border-border"
+                onChange={(v) => setForm((p) => ({ ...p, contact: v }))}
+                className="w-full"
                 data-ocid="ngo.contact.input"
                 required
               />

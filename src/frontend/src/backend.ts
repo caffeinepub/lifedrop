@@ -187,6 +187,7 @@ export interface backendInterface {
     assignCallerUserRole(user: Principal, role: UserRole): Promise<void>;
     completeBloodRequest(requestId: bigint): Promise<boolean>;
     createBloodRequest(patientName: string, bloodGroup: BloodGroup, quantityMl: bigint, hospitalName: string, city: string, urgency: UrgencyLevel, contact: string): Promise<bigint>;
+    deleteBloodRequest(requestId: bigint): Promise<boolean>;
     getAllDonorsList(): Promise<Array<DonorPublicInfo>>;
     getAllHospitals(): Promise<Array<HospitalProfile>>;
     getAllUsers(): Promise<Array<User>>;
@@ -207,7 +208,6 @@ export interface backendInterface {
     updateDonorAvailability(available: boolean): Promise<boolean>;
     updateHospitalProfile(licenseNumber: string, hospitalName: string, address: string): Promise<boolean>;
     updateUser(user: User): Promise<void>;
-    upgrade(): Promise<void>;
 }
 import type { BloodGroup as _BloodGroup, BloodRequest as _BloodRequest, DonorProfile as _DonorProfile, DonorPublicInfo as _DonorPublicInfo, PublicUserEntry as _PublicUserEntry, Role as _Role, UrgencyLevel as _UrgencyLevel, User as _User, UserProfile as _UserProfile, UserRole as _UserRole } from "./declarations/backend.did.d.ts";
 export class Backend implements backendInterface {
@@ -293,6 +293,20 @@ export class Backend implements backendInterface {
             }
         } else {
             const result = await this.actor.createBloodRequest(arg0, to_candid_BloodGroup_n3(this._uploadFile, this._downloadFile, arg1), arg2, arg3, arg4, to_candid_UrgencyLevel_n5(this._uploadFile, this._downloadFile, arg5), arg6);
+            return result;
+        }
+    }
+    async deleteBloodRequest(arg0: bigint): Promise<boolean> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.deleteBloodRequest(arg0);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.deleteBloodRequest(arg0);
             return result;
         }
     }
@@ -573,20 +587,6 @@ export class Backend implements backendInterface {
             }
         } else {
             const result = await this.actor.updateUser(to_candid_User_n42(this._uploadFile, this._downloadFile, arg0));
-            return result;
-        }
-    }
-    async upgrade(): Promise<void> {
-        if (this.processError) {
-            try {
-                const result = await this.actor.upgrade();
-                return result;
-            } catch (e) {
-                this.processError(e);
-                throw new Error("unreachable");
-            }
-        } else {
-            const result = await this.actor.upgrade();
             return result;
         }
     }
