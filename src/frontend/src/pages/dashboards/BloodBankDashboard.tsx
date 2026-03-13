@@ -12,15 +12,18 @@ import {
   AlertTriangle,
   Calendar,
   Clock,
+  ImagePlus,
   Loader2,
   MapPin,
   Megaphone,
   Phone,
   Plus,
+  Trash2,
   Users,
 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
+import { CampPosterDialog } from "../../components/CampPosterDialog";
 import { PhoneInput, extractPhoneDigits } from "../../components/PhoneInput";
 import { type CampAnnouncement, useApp } from "../../contexts/AppContext";
 
@@ -91,9 +94,8 @@ const campStatusColors = {
 };
 
 export function BloodBankDashboard() {
-  const { userProfile, camps, addCamp } = useApp();
+  const { userProfile, camps, addCamp, deleteCamp } = useApp();
 
-  // Read blood bank-specific fields saved during registration
   const storedBloodBank = useMemo((): StoredBloodBank | null => {
     try {
       const raw = localStorage.getItem("lifedrop_profile_bloodBank");
@@ -113,7 +115,6 @@ export function BloodBankDashboard() {
   });
   const [isAdding, setIsAdding] = useState(false);
 
-  // Camp announcement form
   const [campForm, setCampForm] = useState({
     name: "",
     venue: "",
@@ -121,9 +122,14 @@ export function BloodBankDashboard() {
     time: "",
     expectedDonors: "",
     contact: "",
+    posterImageBase64: "",
   });
   const [isPostingCamp, setIsPostingCamp] = useState(false);
   const [showCampForm, setShowCampForm] = useState(false);
+
+  const [posterCamp, setPosterCamp] = useState<CampAnnouncement | null>(null);
+  const [posterOpen, setPosterOpen] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const bloodBankCamps = camps.filter((c) => c.postedBy === "Blood Bank");
 
@@ -133,6 +139,23 @@ export function BloodBankDashboard() {
   const totalFreshMl = units
     .filter((u) => u.status === "fresh")
     .reduce((sum, u) => sum + u.quantity, 0);
+
+  const handlePosterImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("Image must be under 5 MB");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      setCampForm((p) => ({
+        ...p,
+        posterImageBase64: ev.target?.result as string,
+      }));
+    };
+    reader.readAsDataURL(file);
+  };
 
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -178,6 +201,9 @@ export function BloodBankDashboard() {
       postedBy: "Blood Bank",
       postedAt: new Date().toISOString(),
       status: campForm.date >= today ? "upcoming" : "completed",
+      posterImage: campForm.posterImageBase64 || undefined,
+      interestedCount: 0,
+      interestedByDevice: [],
     };
     addCamp(camp);
     setCampForm({
@@ -187,15 +213,23 @@ export function BloodBankDashboard() {
       time: "",
       expectedDonors: "",
       contact: "",
+      posterImageBase64: "",
     });
     setShowCampForm(false);
     setIsPostingCamp(false);
     toast.success("Camp announcement posted! Visible to all users.");
   };
 
+  const handleDeleteCamp = (campId: string, campName: string) => {
+    if (window.confirm(`Delete camp "${campName}"? This cannot be undone.`)) {
+      deleteCamp(campId);
+      toast.success("Camp deleted.");
+    }
+  };
+
   return (
     <main className="container mx-auto px-4 py-8">
-      <h1 className="font-display text-3xl font-black mb-2">
+      <h1 className="font-display text-3xl font-black mb-2 animate-cinema-enter">
         Blood Bank{" "}
         <span style={{ color: "oklch(var(--neon-red))" }}>Dashboard</span>
       </h1>
@@ -203,7 +237,7 @@ export function BloodBankDashboard() {
         Welcome,{" "}
         {storedBloodBank?.bankName || userProfile?.name || "Blood Bank"}
       </p>
-      {/* Profile info strip */}
+
       <div className="flex flex-wrap gap-4 mb-8 text-sm text-muted-foreground">
         {(storedBloodBank?.phone || userProfile?.phone) && (
           <span className="flex items-center gap-1.5">
@@ -275,7 +309,6 @@ export function BloodBankDashboard() {
         ))}
       </div>
 
-      {/* Expiry Alerts */}
       {expiringUnits.length > 0 && (
         <div
           className="rounded-xl p-4 mb-6 flex items-start gap-3"
@@ -401,21 +434,16 @@ export function BloodBankDashboard() {
                       backgroundColor: "oklch(var(--secondary))",
                     }}
                   >
-                    <th className="text-left px-4 py-3 text-xs uppercase tracking-wider text-muted-foreground">
-                      ID
-                    </th>
-                    <th className="text-left px-4 py-3 text-xs uppercase tracking-wider text-muted-foreground">
-                      Group
-                    </th>
-                    <th className="text-left px-4 py-3 text-xs uppercase tracking-wider text-muted-foreground">
-                      Quantity (ml)
-                    </th>
-                    <th className="text-left px-4 py-3 text-xs uppercase tracking-wider text-muted-foreground">
-                      Expiry
-                    </th>
-                    <th className="text-left px-4 py-3 text-xs uppercase tracking-wider text-muted-foreground">
-                      Status
-                    </th>
+                    {["ID", "Group", "Quantity (ml)", "Expiry", "Status"].map(
+                      (h) => (
+                        <th
+                          key={h}
+                          className="text-left px-4 py-3 text-xs uppercase tracking-wider text-muted-foreground"
+                        >
+                          {h}
+                        </th>
+                      ),
+                    )}
                   </tr>
                 </thead>
                 <tbody
@@ -608,7 +636,88 @@ export function BloodBankDashboard() {
                   required
                 />
               </div>
+
+              {/* Poster Image Upload */}
+              <div className="space-y-1.5 sm:col-span-2">
+                <Label>Event Poster Image (optional)</Label>
+                <label
+                  className="flex items-center gap-4 p-3 rounded-lg cursor-pointer transition-all"
+                  style={{
+                    border: "2px dashed oklch(var(--border))",
+                    background: "oklch(var(--secondary) / 0.5)",
+                  }}
+                >
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    className="hidden"
+                    onChange={handlePosterImageChange}
+                    data-ocid="bloodbank.camp_poster.upload_button"
+                  />
+                  {campForm.posterImageBase64 ? (
+                    <>
+                      <img
+                        src={campForm.posterImageBase64}
+                        alt="Poster preview"
+                        style={{
+                          width: 64,
+                          height: 64,
+                          objectFit: "cover",
+                          borderRadius: 8,
+                          flexShrink: 0,
+                        }}
+                      />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-foreground">
+                          Poster uploaded
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          Click to change image
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={(ev) => {
+                          ev.stopPropagation();
+                          setCampForm((p) => ({ ...p, posterImageBase64: "" }));
+                        }}
+                        className="text-xs px-2 py-1 rounded"
+                        style={{
+                          color: "oklch(var(--neon-red))",
+                          border: "1px solid oklch(var(--neon-red) / 0.3)",
+                        }}
+                      >
+                        Remove
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <div
+                        className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0"
+                        style={{
+                          backgroundColor: "oklch(var(--neon-red) / 0.1)",
+                        }}
+                      >
+                        <ImagePlus
+                          className="h-5 w-5"
+                          style={{ color: "oklch(var(--neon-red))" }}
+                        />
+                      </div>
+                      <div>
+                        <p className="text-sm font-semibold">
+                          Upload Event Poster
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          JPEG, PNG or WebP — max 5 MB
+                        </p>
+                      </div>
+                    </>
+                  )}
+                </label>
+              </div>
             </div>
+
             <div className="flex gap-3">
               <Button
                 type="submit"
@@ -659,47 +768,111 @@ export function BloodBankDashboard() {
               return (
                 <div
                   key={camp.id}
-                  className="rounded-xl card-dark p-5"
+                  className="rounded-xl card-dark overflow-hidden relative"
                   data-ocid={`bloodbank.camp.item.${i + 1}`}
                 >
-                  <div className="flex items-start justify-between mb-3">
-                    <h3 className="font-semibold text-sm">{camp.name}</h3>
-                    <span
-                      className="text-xs px-2 py-0.5 rounded-full font-medium flex-shrink-0"
+                  {camp.posterImage && (
+                    <img
+                      src={camp.posterImage}
+                      alt={`Poster for ${camp.name}`}
                       style={{
-                        backgroundColor: sc.bg,
-                        color: sc.color,
-                        border: `1px solid ${sc.color.replace(")", " / 0.3)")}`,
+                        width: "100%",
+                        height: 120,
+                        objectFit: "cover",
+                        display: "block",
                       }}
-                    >
-                      {sc.label}
-                    </span>
-                  </div>
-                  <div className="space-y-1.5 text-sm text-muted-foreground">
-                    <div className="flex items-center gap-2">
-                      <MapPin className="h-3.5 w-3.5 flex-shrink-0" />
-                      <span className="truncate">{camp.venue}</span>
+                    />
+                  )}
+
+                  <div className="p-5">
+                    <div className="absolute top-3 right-3 flex gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setPosterCamp(camp);
+                          setPosterOpen(true);
+                        }}
+                        data-ocid={`bloodbank.camp.poster.button.${i + 1}`}
+                        title="View event poster"
+                        className="w-7 h-7 rounded-md flex items-center justify-center text-xs transition-all hover:scale-110"
+                        style={{
+                          backgroundColor: "oklch(0.65 0.18 240 / 0.15)",
+                          border: "1px solid oklch(0.65 0.18 240 / 0.3)",
+                          color: "oklch(0.65 0.18 240)",
+                        }}
+                      >
+                        🪧
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteCamp(camp.id, camp.name)}
+                        data-ocid={`bloodbank.camp.delete_button.${i + 1}`}
+                        title="Delete camp"
+                        className="w-7 h-7 rounded-md flex items-center justify-center transition-all hover:scale-110"
+                        style={{
+                          backgroundColor: "oklch(0.55 0.22 25 / 0.15)",
+                          border: "1px solid oklch(0.55 0.22 25 / 0.3)",
+                          color: "oklch(0.62 0.26 25)",
+                        }}
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <Calendar className="h-3.5 w-3.5 flex-shrink-0" />
-                      <span>{camp.date}</span>
-                      {camp.time && (
-                        <>
-                          <Clock className="h-3.5 w-3.5 flex-shrink-0 ml-1" />
-                          <span>{camp.time}</span>
-                        </>
+
+                    <div className="flex items-start justify-between mb-3 pr-20">
+                      <h3 className="font-semibold text-sm">{camp.name}</h3>
+                      <span
+                        className="text-xs px-2 py-0.5 rounded-full font-medium flex-shrink-0"
+                        style={{
+                          backgroundColor: sc.bg,
+                          color: sc.color,
+                          border: `1px solid ${sc.color.replace(")", " / 0.3)")}`,
+                        }}
+                      >
+                        {sc.label}
+                      </span>
+                    </div>
+                    <div className="space-y-1.5 text-sm text-muted-foreground">
+                      <div className="flex items-center gap-2">
+                        <MapPin className="h-3.5 w-3.5 flex-shrink-0" />
+                        <span className="truncate">{camp.venue}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Calendar className="h-3.5 w-3.5 flex-shrink-0" />
+                        <span>{camp.date}</span>
+                        {camp.time && (
+                          <>
+                            <Clock className="h-3.5 w-3.5 flex-shrink-0 ml-1" />
+                            <span>{camp.time}</span>
+                          </>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Users className="h-3.5 w-3.5 flex-shrink-0" />
+                        <span>{camp.expectedDonors} expected donors</span>
+                      </div>
+                      {camp.contact && (
+                        <div className="flex items-center gap-2">
+                          <Phone className="h-3.5 w-3.5 flex-shrink-0" />
+                          <span>{camp.contact}</span>
+                        </div>
+                      )}
+                      {camp.interestedCount > 0 && (
+                        <div
+                          className="flex items-center gap-2"
+                          style={{ color: "oklch(0.72 0.18 60)" }}
+                        >
+                          <span>🙋</span>
+                          <span>{camp.interestedCount} interested</span>
+                        </div>
                       )}
                     </div>
-                    <div className="flex items-center gap-2">
-                      <Users className="h-3.5 w-3.5 flex-shrink-0" />
-                      <span>{camp.expectedDonors} expected donors</span>
+                    <div
+                      className="mt-3 pt-3 border-t text-xs text-muted-foreground font-mono"
+                      style={{ borderColor: "oklch(var(--border))" }}
+                    >
+                      {camp.id}
                     </div>
-                    {camp.contact && (
-                      <div className="flex items-center gap-2">
-                        <Phone className="h-3.5 w-3.5 flex-shrink-0" />
-                        <span>{camp.contact}</span>
-                      </div>
-                    )}
                   </div>
                 </div>
               );
@@ -707,6 +880,15 @@ export function BloodBankDashboard() {
           </div>
         )}
       </div>
+
+      <CampPosterDialog
+        camp={posterCamp}
+        open={posterOpen}
+        onOpenChange={(open) => {
+          setPosterOpen(open);
+          if (!open) setPosterCamp(null);
+        }}
+      />
     </main>
   );
 }

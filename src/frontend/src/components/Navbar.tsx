@@ -13,6 +13,7 @@ import { useState } from "react";
 import { type Language, useApp } from "../contexts/AppContext";
 import { useNotifications } from "../hooks/useNotifications";
 import { cn } from "../lib/utils";
+import { MusicPlayer } from "./MusicPlayer";
 
 export function Navbar() {
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -72,7 +73,7 @@ export function Navbar() {
               style={{ color: "oklch(var(--neon-red))" }}
             />
           </div>
-          <span className="font-display text-xl font-bold tracking-tight text-foreground">
+          <span className="font-display text-xl font-bold tracking-tight text-foreground animate-glitch">
             LIFE<span style={{ color: "oklch(var(--neon-red))" }}>DROP</span>
           </span>
         </Link>
@@ -111,6 +112,9 @@ export function Navbar() {
 
         {/* Right Side */}
         <div className="hidden md:flex items-center gap-3">
+          {/* Music player toggle */}
+          <MusicPlayer />
+
           {/* Language switcher */}
           <select
             value={language}
@@ -204,19 +208,39 @@ export function Navbar() {
           )}
         </div>
 
-        {/* Mobile hamburger */}
-        <button
-          type="button"
-          className="md:hidden p-2 text-muted-foreground hover:text-foreground"
-          onClick={() => setMobileOpen(!mobileOpen)}
-          aria-label="Toggle menu"
-        >
-          {mobileOpen ? (
-            <X className="h-5 w-5" />
-          ) : (
-            <Menu className="h-5 w-5" />
-          )}
-        </button>
+        {/* Mobile: music + hamburger */}
+        <div className="md:hidden flex items-center gap-2">
+          <MusicPlayer />
+          <Link to="/notifications" data-ocid="nav.mobile.bell.link">
+            <button
+              type="button"
+              className="relative p-2 rounded-lg hover:bg-secondary min-h-[44px] min-w-[44px] flex items-center justify-center"
+              aria-label="Notifications"
+            >
+              <Bell
+                className="h-5 w-5"
+                style={{
+                  color: unreadCount > 0 ? "oklch(var(--neon-red))" : undefined,
+                }}
+              />
+              {unreadCount > 0 && (
+                <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-red-500" />
+              )}
+            </button>
+          </Link>
+          <button
+            type="button"
+            className="p-2 text-muted-foreground hover:text-foreground"
+            onClick={() => setMobileOpen(!mobileOpen)}
+            aria-label="Toggle menu"
+          >
+            {mobileOpen ? (
+              <X className="h-5 w-5" />
+            ) : (
+              <Menu className="h-5 w-5" />
+            )}
+          </button>
+        </div>
       </nav>
 
       {/* Mobile menu */}

@@ -42,14 +42,16 @@ export function Footer() {
               {[
                 { label: "Find Donors", href: "/search" },
                 { label: "Emergency Request", href: "/request" },
-                { label: "Register as Donor", href: "/register" },
-                { label: "Hospital Registration", href: "/register" },
+                { label: "Blood Requests", href: "/blood-requests" },
+                { label: "Donation Camps", href: "/camps" },
                 { label: "Blog & Awareness", href: "/blog" },
+                { label: "Leaderboard", href: "/leaderboard" },
               ].map((link) => (
-                <li key={link.href}>
+                <li key={link.label}>
                   <Link
                     to={link.href}
                     className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+                    data-ocid="footer.quick.link"
                   >
                     {link.label}
                   </Link>
@@ -90,11 +92,12 @@ export function Footer() {
             </h4>
             <ul className="space-y-2">
               {[
-                { label: "About LIFEDROP", href: "/" },
+                { label: "Register", href: "/register" },
+                { label: "Login", href: "/login" },
                 { label: "Donor Guidelines", href: "/blog" },
                 { label: "Admin Portal", href: "/dashboard/admin" },
               ].map((link) => (
-                <li key={link.href}>
+                <li key={link.label}>
                   <Link
                     to={link.href}
                     className="text-sm text-muted-foreground hover:text-foreground transition-colors"

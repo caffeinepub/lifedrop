@@ -231,7 +231,7 @@ export function DonorIdPage() {
 
       {/* ID Card */}
       <div
-        className="rounded-2xl overflow-hidden shadow-neon-red relative print:shadow-none"
+        className="rounded-2xl overflow-hidden shadow-neon-red relative print:shadow-none animate-cinema-enter animate-glow-pulse-intense"
         style={{
           border: `2px solid ${bgColor.replace(")", " / 0.5)")}`,
         }}

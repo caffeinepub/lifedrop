@@ -36,7 +36,8 @@ module {
     };
   };
 
-  // Returns #guest silently for any unregistered principal — never traps.
+  // FIXED: Returns #guest silently instead of trapping for unregistered principals.
+  // This prevents "backend temporarily unavailable" errors for device identity users.
   public func getUserRole(state : AccessControlState, caller : Principal) : UserRole {
     if (caller.isAnonymous()) { return #guest };
     switch (state.userRoles.get(caller)) {
@@ -47,7 +48,7 @@ module {
 
   public func assignRole(state : AccessControlState, caller : Principal, user : Principal, role : UserRole) {
     if (not (isAdmin(state, caller))) {
-      return; // silently ignore unauthorized role assignment attempts
+      return; // Silently fail instead of trapping
     };
     state.userRoles.add(user, role);
   };

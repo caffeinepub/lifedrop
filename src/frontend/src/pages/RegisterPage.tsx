@@ -250,15 +250,14 @@ function useRegisterLogic(role: Role) {
       setStatus("registering");
       setErrorMsg("");
       let waited = 0;
-      while (!actorRef.current && waited < 8000) {
-        await new Promise((r) => setTimeout(r, 500));
+      while (!actorRef.current && waited < 4000) {
+        await new Promise((r) => setTimeout(r, 200));
         waited += 500;
       }
       resolvedActor = actorRef.current;
       if (!resolvedActor) {
         setStatus("error");
-        const msg =
-          "Backend is initializing. Please wait a moment and try again.";
+        const msg = "Connecting to blockchain... please wait.";
         setErrorMsg(msg);
         toast.error(msg);
         setTimeout(() => setStatus("idle"), 6000);
@@ -426,7 +425,7 @@ function useRegisterLogic(role: Role) {
         setStatus("error");
         const friendlyMsg =
           lowerMsg.includes("canister") || lowerMsg.includes("stopped")
-            ? "Backend is temporarily unavailable. Please try again in a moment."
+            ? "Connecting to blockchain... please wait."
             : lowerMsg.includes("network") || lowerMsg.includes("fetch")
               ? "Network error. Please check your connection and try again."
               : "Registration failed. Please try again.";
@@ -1764,7 +1763,7 @@ export function RegisterPage() {
           >
             {/* Scrollable tab bar for desktop */}
             <div
-              className="hidden sm:block px-2 pt-3 pb-0 overflow-x-auto"
+              className="block px-2 pt-3 pb-0 overflow-x-auto"
               style={{
                 borderBottom: `1px solid ${activeConfig.color}20`,
               }}

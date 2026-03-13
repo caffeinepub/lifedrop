@@ -328,7 +328,7 @@ export function DonorDashboard() {
 
   return (
     <main className="container mx-auto px-4 py-8">
-      <h1 className="font-display text-3xl font-black mb-8">
+      <h1 className="font-display text-3xl font-black mb-8 animate-cinema-enter">
         Donor <span style={{ color: "oklch(var(--neon-red))" }}>Dashboard</span>
       </h1>
 

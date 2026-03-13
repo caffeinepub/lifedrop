@@ -93,7 +93,7 @@ export function LeaderboardPage() {
       {/* Loading */}
       {isLoading && (
         <div
-          className="flex flex-col items-center justify-center py-20 gap-4"
+          className="flex flex-col items-center justify-center py-10 gap-4"
           data-ocid="leaderboard.list.loading_state"
         >
           <Loader2
@@ -139,13 +139,16 @@ export function LeaderboardPage() {
               <div
                 key={`${donor.name}-${i}`}
                 data-ocid={`leaderboard.donor.item.${rank}`}
-                className="rounded-2xl px-5 py-4 flex items-center gap-4 transition-all"
+                className={`rounded-2xl px-5 py-4 flex items-center gap-4 transition-all ${isTop3 ? "animate-spring-in" : "animate-stagger-wave"}`}
                 style={{
                   border: isTop3
                     ? `1px solid ${medal.border}`
                     : "1px solid oklch(var(--border))",
                   backgroundColor: isTop3 ? medal.bg : "oklch(var(--card))",
                   boxShadow: isTop3 ? medal.glow : "none",
+                  animationDelay: isTop3
+                    ? `${[0.3, 0.6, 0.1][i] ?? 0}s`
+                    : `${i * 0.05}s`,
                 }}
               >
                 {/* Rank / Medal */}

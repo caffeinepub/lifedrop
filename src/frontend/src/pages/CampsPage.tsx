@@ -1,4 +1,4 @@
-import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   Calendar,
   CalendarDays,
@@ -8,7 +8,9 @@ import {
   Phone,
   Users,
 } from "lucide-react";
-import { useApp } from "../contexts/AppContext";
+import { useState } from "react";
+import { CampPosterDialog } from "../components/CampPosterDialog";
+import { type CampAnnouncement, useApp } from "../contexts/AppContext";
 
 const statusConfig = {
   upcoming: {
@@ -55,15 +57,35 @@ function formatTime(time: string): string {
   return `${displayHour}:${m} ${ampm}`;
 }
 
+function getDeviceId(): string {
+  let id =
+    localStorage.getItem("lifedrop_device_keypair_id") ||
+    localStorage.getItem("lifedrop_device_id");
+  if (!id) {
+    id = crypto.randomUUID();
+    localStorage.setItem("lifedrop_device_id", id);
+  }
+  return id;
+}
+
 export function CampsPage() {
-  const { camps } = useApp();
+  const { camps, markInterested } = useApp();
+  const [posterCamp, setPosterCamp] = useState<CampAnnouncement | null>(null);
+  const [posterOpen, setPosterOpen] = useState(false);
+
+  const deviceId = getDeviceId();
+
+  function openDetails(camp: CampAnnouncement) {
+    setPosterCamp(camp);
+    setPosterOpen(true);
+  }
 
   return (
-    <main className="container mx-auto px-4 py-12" data-ocid="camps.page">
+    <main className="container mx-auto px-4 py-6" data-ocid="camps.page">
       {/* Header */}
-      <div className="text-center mb-12">
+      <div className="text-center mb-6">
         <div
-          className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-bold mb-6"
+          className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-bold mb-4"
           style={{
             backgroundColor: "oklch(var(--neon-red) / 0.1)",
             color: "oklch(var(--neon-red))",
@@ -73,226 +95,270 @@ export function CampsPage() {
           <CalendarDays className="h-4 w-4" />
           Blood Donation Camps
         </div>
-        <h1 className="font-display text-4xl md:text-5xl font-black mb-4">
+        <h1 className="font-display text-4xl md:text-5xl font-black mb-3">
           Upcoming{" "}
           <span style={{ color: "oklch(var(--neon-red))" }}>
             Donation Camps
           </span>
         </h1>
-        <p className="text-muted-foreground max-w-xl mx-auto">
-          Blood donation camps organized by NGOs and blood banks near you. Join
-          a camp and save lives today.
+        <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
+          Find blood donation camps near you. Organized by NGOs and Blood Banks
+          to save lives.
         </p>
-
-        {/* Live count */}
-        {camps.length > 0 && (
-          <div
-            className="inline-flex items-center gap-2 mt-6 px-4 py-2 rounded-full text-sm"
-            style={{
-              backgroundColor: "oklch(0.65 0.2 140 / 0.1)",
-              color: "oklch(0.65 0.2 140)",
-              border: "1px solid oklch(0.65 0.2 140 / 0.25)",
-            }}
-          >
-            <span className="w-2 h-2 rounded-full bg-current animate-pulse" />
-            {camps.length} active announcement{camps.length !== 1 ? "s" : ""}
-          </div>
-        )}
       </div>
 
-      {/* Empty State */}
-      {camps.length === 0 && (
+      {/* Camps Grid */}
+      {camps.length === 0 ? (
         <div
-          className="rounded-2xl card-dark p-16 text-center max-w-md mx-auto"
+          className="rounded-2xl card-dark p-10 text-center"
           data-ocid="camps.empty_state"
         >
-          <div
-            className="w-20 h-20 rounded-2xl flex items-center justify-center mx-auto mb-6"
-            style={{
-              backgroundColor: "oklch(var(--neon-red) / 0.1)",
-              border: "1px solid oklch(var(--neon-red) / 0.2)",
-            }}
-          >
-            <Droplets
-              className="h-10 w-10"
-              style={{ color: "oklch(var(--neon-red))" }}
-            />
-          </div>
-          <h2 className="font-display text-2xl font-bold mb-3">
-            No camps posted yet
-          </h2>
-          <p className="text-muted-foreground text-sm leading-relaxed">
-            NGOs and blood banks can post camp announcements from their
-            dashboards. Check back soon!
+          <div className="text-6xl mb-4">🏕️</div>
+          <h3 className="font-display text-xl font-bold mb-2">
+            No Camps Announced Yet
+          </h3>
+          <p className="text-muted-foreground">
+            NGOs and Blood Banks will post donation camps here. Check back soon!
           </p>
         </div>
-      )}
-
-      {/* Camps Grid */}
-      {camps.length > 0 && (
-        <div
-          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
-          data-ocid="camps.list"
-        >
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {camps.map((camp, i) => {
             const sc = statusConfig[camp.status];
             const pc = postedByConfig[camp.postedBy];
+            const isInterested = camp.interestedByDevice.includes(deviceId);
 
             return (
-              <article
+              <div
                 key={camp.id}
+                className="rounded-2xl card-dark overflow-hidden flex flex-col cursor-pointer"
                 data-ocid={`camps.item.${i + 1}`}
-                className="rounded-xl p-6 flex flex-col gap-4 transition-all duration-300 group"
+                onClick={() => openDetails(camp)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") openDetails(camp);
+                }}
                 style={{
-                  background: "oklch(var(--card))",
-                  border: "1px solid oklch(var(--neon-red) / 0.2)",
-                  boxShadow:
-                    "0 0 12px oklch(var(--neon-red) / 0.08), 0 4px 16px oklch(0 0 0 / 0.3)",
-                  transition: "box-shadow 0.3s ease, border-color 0.3s ease",
+                  border: "1px solid oklch(var(--border))",
+                  transition:
+                    "box-shadow 0.2s ease, transform 0.2s ease, border-color 0.2s ease",
                 }}
                 onMouseEnter={(e) => {
-                  (e.currentTarget as HTMLElement).style.borderColor =
+                  (e.currentTarget as HTMLDivElement).style.borderColor =
                     "oklch(var(--neon-red) / 0.45)";
-                  (e.currentTarget as HTMLElement).style.boxShadow =
-                    "0 0 24px oklch(var(--neon-red) / 0.18), 0 8px 24px oklch(0 0 0 / 0.45)";
+                  (e.currentTarget as HTMLDivElement).style.boxShadow =
+                    "0 0 24px oklch(var(--neon-red) / 0.15), 0 4px 20px oklch(0 0 0 / 0.4)";
+                  (e.currentTarget as HTMLDivElement).style.transform =
+                    "translateY(-2px)";
                 }}
                 onMouseLeave={(e) => {
-                  (e.currentTarget as HTMLElement).style.borderColor =
-                    "oklch(var(--neon-red) / 0.2)";
-                  (e.currentTarget as HTMLElement).style.boxShadow =
-                    "0 0 12px oklch(var(--neon-red) / 0.08), 0 4px 16px oklch(0 0 0 / 0.3)";
+                  (e.currentTarget as HTMLDivElement).style.borderColor = "";
+                  (e.currentTarget as HTMLDivElement).style.boxShadow = "";
+                  (e.currentTarget as HTMLDivElement).style.transform = "";
                 }}
               >
-                {/* Header row: badges */}
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span
-                    className="text-xs px-2.5 py-1 rounded-full font-semibold"
+                {/* Poster image or gradient header */}
+                {camp.posterImage ? (
+                  <div
                     style={{
-                      backgroundColor: sc.bg,
-                      color: sc.color,
-                      border: `1px solid ${sc.border}`,
+                      position: "relative",
+                      height: "160px",
+                      overflow: "hidden",
                     }}
                   >
-                    {sc.label}
-                  </span>
-                  <span
-                    className="text-xs px-2.5 py-1 rounded-full font-semibold"
+                    <img
+                      src={camp.posterImage}
+                      alt={`Poster for ${camp.name}`}
+                      style={{
+                        width: "100%",
+                        height: "100%",
+                        objectFit: "cover",
+                        display: "block",
+                      }}
+                    />
+                    <div
+                      style={{
+                        position: "absolute",
+                        inset: 0,
+                        background:
+                          "linear-gradient(to bottom, transparent 40%, oklch(0.08 0.005 20 / 0.8))",
+                      }}
+                    />
+                    <div
+                      style={{
+                        position: "absolute",
+                        top: 8,
+                        right: 8,
+                        backgroundColor: "oklch(0 0 0 / 0.5)",
+                        color: "white",
+                        fontSize: "11px",
+                        fontWeight: 600,
+                        padding: "3px 8px",
+                        borderRadius: "99px",
+                        backdropFilter: "blur(4px)",
+                      }}
+                    >
+                      Click to view details
+                    </div>
+                  </div>
+                ) : (
+                  <div
                     style={{
-                      backgroundColor: pc.bg,
-                      color: pc.color,
-                      border: `1px solid ${pc.border}`,
+                      height: "6px",
+                      background: `linear-gradient(90deg, ${pc.color}, oklch(var(--neon-red)))`,
                     }}
-                  >
-                    {pc.label}
-                  </span>
-                </div>
+                  />
+                )}
 
-                {/* Camp name */}
-                <div>
-                  <h2 className="font-display text-lg font-bold leading-snug group-hover:text-foreground transition-colors">
-                    {camp.name}
-                  </h2>
-                  <p className="text-sm text-muted-foreground mt-0.5">
-                    Organized by {camp.organizer}
-                  </p>
-                </div>
-
-                {/* Details */}
-                <div className="space-y-2.5 text-sm text-muted-foreground">
-                  <div className="flex items-start gap-2.5">
-                    <MapPin
-                      className="h-4 w-4 flex-shrink-0 mt-0.5"
-                      style={{ color: "oklch(var(--neon-red))" }}
-                    />
-                    <span className="leading-relaxed">{camp.venue}</span>
-                  </div>
-                  <div className="flex items-center gap-2.5">
-                    <Calendar
-                      className="h-4 w-4 flex-shrink-0"
-                      style={{ color: "oklch(var(--neon-red))" }}
-                    />
-                    <span>{camp.date}</span>
-                    {camp.time && (
-                      <>
-                        <Clock
-                          className="h-4 w-4 flex-shrink-0 ml-0.5"
-                          style={{ color: "oklch(0.65 0.18 240)" }}
-                        />
-                        <span style={{ color: "oklch(0.65 0.18 240)" }}>
-                          {formatTime(camp.time)}
-                        </span>
-                      </>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-2.5">
-                    <Users
-                      className="h-4 w-4 flex-shrink-0"
-                      style={{ color: "oklch(0.65 0.2 140)" }}
-                    />
-                    <span>
-                      <span
-                        className="font-semibold"
-                        style={{ color: "oklch(0.65 0.2 140)" }}
-                      >
-                        {camp.expectedDonors}
-                      </span>{" "}
-                      donors expected
+                <div className="p-5 flex flex-col flex-1">
+                  {/* Badges */}
+                  <div className="flex flex-wrap gap-2 mb-3">
+                    <span
+                      className="text-xs font-bold px-2.5 py-1 rounded-full"
+                      style={{
+                        backgroundColor: pc.bg,
+                        color: pc.color,
+                        border: `1px solid ${pc.border}`,
+                      }}
+                    >
+                      {pc.label}
+                    </span>
+                    <span
+                      className="text-xs font-bold px-2.5 py-1 rounded-full"
+                      style={{
+                        backgroundColor: sc.bg,
+                        color: sc.color,
+                        border: `1px solid ${sc.border}`,
+                      }}
+                    >
+                      {sc.label}
                     </span>
                   </div>
-                  {camp.contact && (
-                    <div className="flex items-center gap-2.5">
-                      <Phone
-                        className="h-4 w-4 flex-shrink-0"
-                        style={{ color: "oklch(0.65 0.18 160)" }}
-                      />
-                      <a
-                        href={`tel:${camp.contact}`}
-                        className="font-semibold hover:underline transition-colors"
-                        style={{ color: "oklch(0.65 0.18 160)" }}
-                      >
-                        {camp.contact}
-                      </a>
-                    </div>
-                  )}
-                </div>
 
-                {/* Footer: camp ID + posted time */}
-                <div
-                  className="pt-3 border-t flex items-center justify-between text-xs text-muted-foreground font-mono"
-                  style={{ borderColor: "oklch(var(--border))" }}
-                >
-                  <span>{camp.id}</span>
-                  <span>
-                    {new Date(camp.postedAt).toLocaleDateString("en-IN", {
-                      day: "numeric",
-                      month: "short",
-                    })}
-                  </span>
+                  {/* Camp name */}
+                  <h3 className="font-display font-black text-lg mb-3">
+                    {camp.name}
+                  </h3>
+
+                  {/* Details */}
+                  <div className="space-y-2 text-sm text-muted-foreground mb-4 flex-1">
+                    <div className="flex items-center gap-2">
+                      <MapPin
+                        className="h-3.5 w-3.5 flex-shrink-0"
+                        style={{ color: "oklch(var(--neon-red))" }}
+                      />
+                      <span className="line-clamp-1">{camp.venue}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Calendar
+                        className="h-3.5 w-3.5 flex-shrink-0"
+                        style={{ color: "oklch(0.65 0.18 240)" }}
+                      />
+                      <span>{camp.date}</span>
+                      {camp.time && (
+                        <>
+                          <Clock
+                            className="h-3.5 w-3.5 flex-shrink-0 ml-1"
+                            style={{ color: "oklch(0.72 0.18 60)" }}
+                          />
+                          <span>{formatTime(camp.time)}</span>
+                        </>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Users
+                        className="h-3.5 w-3.5 flex-shrink-0"
+                        style={{ color: "oklch(0.65 0.18 290)" }}
+                      />
+                      <span>{camp.expectedDonors} donors expected</span>
+                    </div>
+                    {camp.contact && (
+                      <div className="flex items-center gap-2">
+                        <Phone
+                          className="h-3.5 w-3.5 flex-shrink-0"
+                          style={{ color: "oklch(0.65 0.2 140)" }}
+                        />
+                        <a
+                          href={`tel:${camp.contact}`}
+                          className="hover:underline"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          {camp.contact}
+                        </a>
+                      </div>
+                    )}
+                    <div className="flex items-center gap-2">
+                      <Droplets
+                        className="h-3.5 w-3.5 flex-shrink-0"
+                        style={{ color: "oklch(0.62 0.2 220)" }}
+                      />
+                      <span>By {camp.organizer}</span>
+                    </div>
+                  </div>
+
+                  {/* Action buttons */}
+                  <div className="flex flex-col gap-2 mt-auto">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        openDetails(camp);
+                      }}
+                      data-ocid={`camps.poster.button.${i + 1}`}
+                      className="w-full"
+                    >
+                      🔍 View Full Details
+                    </Button>
+
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        markInterested(camp.id, deviceId);
+                      }}
+                      data-ocid={`camps.interested.button.${i + 1}`}
+                      disabled={isInterested}
+                      className="w-full px-3 py-2 rounded-lg text-sm font-semibold transition-all duration-200"
+                      style={{
+                        backgroundColor: isInterested
+                          ? "oklch(0.45 0.18 140 / 0.15)"
+                          : "oklch(0.72 0.18 60 / 0.1)",
+                        border: isInterested
+                          ? "1px solid oklch(0.45 0.18 140 / 0.4)"
+                          : "1px solid oklch(0.72 0.18 60 / 0.4)",
+                        color: isInterested
+                          ? "oklch(0.55 0.18 140)"
+                          : "oklch(0.72 0.18 60)",
+                        boxShadow: isInterested
+                          ? "0 0 12px oklch(0.45 0.18 140 / 0.2)"
+                          : "0 0 12px oklch(0.72 0.18 60 / 0.15)",
+                        cursor: isInterested ? "default" : "pointer",
+                      }}
+                    >
+                      {isInterested
+                        ? `✓ Interested (${camp.interestedCount})`
+                        : `🙋 I am Interested${
+                            camp.interestedCount > 0
+                              ? ` (${camp.interestedCount})`
+                              : ""
+                          }`}
+                    </button>
+                  </div>
                 </div>
-              </article>
+              </div>
             );
           })}
         </div>
       )}
 
-      {/* Info banner */}
-      <div
-        className="mt-16 rounded-2xl p-8 text-center"
-        style={{
-          background:
-            "linear-gradient(135deg, oklch(var(--neon-red) / 0.06) 0%, transparent 100%)",
-          border: "1px solid oklch(var(--neon-red) / 0.12)",
+      <CampPosterDialog
+        camp={posterCamp}
+        open={posterOpen}
+        onOpenChange={(open) => {
+          setPosterOpen(open);
+          if (!open) setPosterCamp(null);
         }}
-      >
-        <div className="text-3xl mb-3">🏕️</div>
-        <h3 className="font-display text-xl font-bold mb-2">
-          Organizing a Camp?
-        </h3>
-        <p className="text-muted-foreground text-sm max-w-md mx-auto">
-          If you're an NGO or Blood Bank, log in to your dashboard to post camp
-          announcements that will be visible to all users of LIFEDROP.
-        </p>
-      </div>
+      />
     </main>
   );
 }

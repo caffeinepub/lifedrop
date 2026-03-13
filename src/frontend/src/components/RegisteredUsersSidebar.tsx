@@ -207,10 +207,11 @@ export function RegisteredUsersSidebar() {
           return (
             <div
               key={`${user.name}-${roleStr}-${idx}`}
-              className="group rounded-lg p-3 transition-all hover:scale-[1.01]"
+              className="group rounded-lg p-3 transition-all hover:scale-[1.01] animate-live-item"
               style={{
                 background: "oklch(0.13 0.005 20 / 0.8)",
                 border: "1px solid oklch(var(--border) / 0.5)",
+                animationDelay: `${Math.min(idx, 10) * 0.05}s`,
               }}
               data-ocid={`sidebar.item.${ocidIndex}`}
             >

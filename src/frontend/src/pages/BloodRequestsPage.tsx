@@ -151,7 +151,7 @@ export function BloodRequestsPage() {
   return (
     <main className="container mx-auto px-4 py-10 max-w-4xl">
       {/* Header */}
-      <div className="text-center mb-8">
+      <div className="text-center mb-8 animate-cinema-enter">
         <div
           className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-bold mb-5 animate-pulse-glow"
           style={{
@@ -237,7 +237,7 @@ export function BloodRequestsPage() {
       {/* Content */}
       {isLoading ? (
         <div
-          className="flex flex-col items-center justify-center py-20 gap-4"
+          className="flex flex-col items-center justify-center py-10 gap-4"
           data-ocid="bloodreqs.list.loading_state"
         >
           <Loader2
@@ -290,13 +290,14 @@ export function BloodRequestsPage() {
               <div
                 key={req.id.toString()}
                 data-ocid={`bloodreqs.request.item.${i + 1}`}
-                className={`rounded-2xl p-5 transition-all ${
-                  isCritical ? "animate-pulse-glow" : ""
+                className={`rounded-2xl p-5 transition-all animate-card-emerge ${
+                  isCritical ? "animate-glow-pulse-intense" : ""
                 }`}
                 style={{
                   border: `1px solid ${uc.border}`,
                   backgroundColor: uc.bg,
                   boxShadow: uc.glow,
+                  animationDelay: `${i * 0.08}s`,
                 }}
               >
                 <div className="flex items-start justify-between gap-4 flex-wrap">

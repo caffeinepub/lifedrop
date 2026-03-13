@@ -3,9 +3,11 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useState,
 } from "react";
 import type { UserProfile } from "../backend.d";
+import { addNotificationGlobal } from "../hooks/useNotifications";
 
 // ─── Language ────────────────────────────────────────────────
 export type Language = "en" | "ta" | "hi" | "kn" | "ml";
@@ -119,6 +121,9 @@ export type CampAnnouncement = {
   postedBy: "NGO" | "Blood Bank";
   postedAt: string;
   status: "upcoming" | "active" | "completed";
+  posterImage?: string;
+  interestedCount: number;
+  interestedByDevice: string[];
 };
 
 // ─── Registered User (localStorage) ─────────────────────────
@@ -132,6 +137,20 @@ export interface RegisteredUserEntry {
 
 const STORAGE_KEY_PROFILE = "lifedrop_user_profile";
 const STORAGE_KEY_USERS = "lifedrop_registered_users";
+const STORAGE_KEY_CAMPS = "lifedrop_camps";
+
+function loadCamps(): CampAnnouncement[] {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY_CAMPS);
+    return raw ? (JSON.parse(raw) as CampAnnouncement[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveCamps(camps: CampAnnouncement[]): void {
+  localStorage.setItem(STORAGE_KEY_CAMPS, JSON.stringify(camps));
+}
 
 export function getStoredProfile(): UserProfile | null {
   try {
@@ -157,9 +176,8 @@ export function getRegisteredUsers(): RegisteredUserEntry[] {
 
 export function addRegisteredUser(entry: RegisteredUserEntry): void {
   const existing = getRegisteredUsers();
-  existing.unshift(entry); // newest first
+  existing.unshift(entry);
   localStorage.setItem(STORAGE_KEY_USERS, JSON.stringify(existing));
-  // Dispatch a custom event so the sidebar can refresh
   window.dispatchEvent(new CustomEvent("lifedrop_user_registered"));
 }
 
@@ -174,6 +192,8 @@ interface AppContextValue {
   refetchProfile: () => void;
   camps: CampAnnouncement[];
   addCamp: (camp: CampAnnouncement) => void;
+  deleteCamp: (id: string) => void;
+  markInterested: (campId: string, deviceId: string) => void;
 }
 
 const AppContext = createContext<AppContextValue | undefined>(undefined);
@@ -184,16 +204,51 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return (localStorage.getItem("lifedrop_lang") as Language) ?? "en";
   });
 
-  const [userProfile, setUserProfileState] = useState<UserProfile | null>(
-    () => {
-      return getStoredProfile();
-    },
+  const [userProfile, setUserProfileState] = useState<UserProfile | null>(() =>
+    getStoredProfile(),
   );
 
-  const [camps, setCamps] = useState<CampAnnouncement[]>([]);
+  const [camps, setCamps] = useState<CampAnnouncement[]>(() => loadCamps());
+
+  // Persist camps to localStorage whenever they change
+  useEffect(() => {
+    saveCamps(camps);
+  }, [camps]);
 
   const addCamp = useCallback((camp: CampAnnouncement) => {
-    setCamps((prev) => [camp, ...prev]);
+    setCamps((prev) => {
+      const next = [camp, ...prev];
+      saveCamps(next);
+      return next;
+    });
+    addNotificationGlobal(
+      `🏕️ New blood donation camp: "${camp.name}" at ${camp.venue} on ${camp.date}`,
+      "info",
+    );
+  }, []);
+
+  const deleteCamp = useCallback((id: string) => {
+    setCamps((prev) => {
+      const next = prev.filter((c) => c.id !== id);
+      saveCamps(next);
+      return next;
+    });
+  }, []);
+
+  const markInterested = useCallback((campId: string, deviceId: string) => {
+    setCamps((prev) => {
+      const next = prev.map((c) => {
+        if (c.id !== campId) return c;
+        if (c.interestedByDevice.includes(deviceId)) return c;
+        return {
+          ...c,
+          interestedCount: c.interestedCount + 1,
+          interestedByDevice: [...c.interestedByDevice, deviceId],
+        };
+      });
+      saveCamps(next);
+      return next;
+    });
   }, []);
 
   const setLanguage = useCallback((lang: Language) => {
@@ -233,6 +288,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
         refetchProfile,
         camps,
         addCamp,
+        deleteCamp,
+        markInterested,
       }}
     >
       {children}

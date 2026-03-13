@@ -58,7 +58,7 @@ export function VolunteerDashboard() {
 
   return (
     <main className="container mx-auto px-4 py-8">
-      <h1 className="font-display text-3xl font-black mb-2">
+      <h1 className="font-display text-3xl font-black mb-2 animate-cinema-enter">
         Volunteer{" "}
         <span style={{ color: "oklch(var(--neon-red))" }}>Dashboard</span>
       </h1>

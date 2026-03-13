@@ -104,7 +104,7 @@ export function BlogPage() {
   return (
     <main className="container mx-auto px-4 py-12">
       {/* Header */}
-      <div className="text-center mb-12">
+      <div className="text-center mb-12 animate-cinema-enter">
         <div
           className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-bold mb-6"
           style={{
@@ -157,9 +157,6 @@ export function BlogPage() {
           <p className="text-muted-foreground mb-4 leading-relaxed">
             {posts[0].excerpt}
           </p>
-          <div className="flex items-center gap-4 text-sm text-muted-foreground">
-            <span>{posts[0].date}</span>
-          </div>
         </div>
       </div>
 
@@ -169,7 +166,8 @@ export function BlogPage() {
           <article
             key={post.id}
             data-ocid={`blog.post.item.${i + 1}`}
-            className="rounded-xl card-dark hover:border-primary/30 transition-all cursor-pointer group"
+            className="rounded-xl card-dark hover:border-primary/30 transition-all cursor-pointer group animate-card-emerge"
+            style={{ animationDelay: `${i * 0.1}s` }}
           >
             <div className="p-6">
               <div className="flex items-start justify-between mb-4">
@@ -195,9 +193,6 @@ export function BlogPage() {
                 >
                   {post.category}
                 </Badge>
-                <span className="text-xs text-muted-foreground">
-                  {post.date}
-                </span>
               </div>
 
               <h3 className="font-semibold mb-2 leading-snug group-hover:text-foreground transition-colors">

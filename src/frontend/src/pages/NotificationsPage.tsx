@@ -30,7 +30,7 @@ export function NotificationsPage() {
         <div>
           <div className="flex items-center gap-3 mb-1">
             <Bell
-              className="h-6 w-6"
+              className="h-6 w-6 animate-heartbeat"
               style={{ color: "oklch(var(--neon-red))" }}
             />
             <h1 className="font-display text-3xl font-black">Notifications</h1>
@@ -111,7 +111,7 @@ export function NotificationsPage() {
             <div
               key={n.id}
               data-ocid={`notifications.item.${i + 1}`}
-              className="rounded-xl px-4 py-3 flex items-start gap-3 transition-all"
+              className="rounded-xl px-4 py-3 flex items-start gap-3 transition-all animate-live-item"
               style={{
                 border: n.read
                   ? "1px solid oklch(var(--border))"
@@ -119,6 +119,7 @@ export function NotificationsPage() {
                 backgroundColor: n.read
                   ? "oklch(var(--card))"
                   : "oklch(var(--neon-red) / 0.05)",
+                animationDelay: `${i * 0.06}s`,
               }}
             >
               {/* Type dot */}

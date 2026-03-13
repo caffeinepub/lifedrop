@@ -102,9 +102,7 @@ export function EmergencyRequestPage() {
       const msg = err instanceof Error ? err.message : String(err);
       const lower = msg.toLowerCase();
       if (lower.includes("stopped") || lower.includes("canister")) {
-        toast.error(
-          "Backend is temporarily unavailable. Please try again in a moment.",
-        );
+        toast.error("Connecting to blockchain... please wait.");
       } else if (lower.includes("network") || lower.includes("fetch")) {
         toast.error(
           "Network error. Please check your connection and try again.",
@@ -193,7 +191,7 @@ export function EmergencyRequestPage() {
   return (
     <main className="container mx-auto px-4 py-12 max-w-2xl">
       {/* Header */}
-      <div className="text-center mb-10">
+      <div className="text-center mb-10 animate-cinema-enter">
         <div
           className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-bold mb-6 animate-pulse-glow"
           style={{

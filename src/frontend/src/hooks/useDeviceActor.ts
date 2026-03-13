@@ -22,8 +22,9 @@ export function useDeviceActor() {
       return actor;
     },
     staleTime: Number.POSITIVE_INFINITY,
-    retry: 8,
-    retryDelay: (attempt) => Math.min(2000 * 2 ** attempt, 30000),
+    // Faster retries: 300ms, 600ms, 1200ms, 2400ms, 5000ms cap
+    retry: 5,
+    retryDelay: (attempt) => Math.min(300 * 2 ** attempt, 5000),
   });
 
   return {

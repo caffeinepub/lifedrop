@@ -80,13 +80,14 @@ function DonorCard({
   return (
     <div
       data-ocid={`search.donor.item.${index}`}
-      className="relative rounded-2xl overflow-hidden transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl"
+      className="relative rounded-2xl overflow-hidden transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl animate-card-emerge"
       style={{
         background:
           "linear-gradient(145deg, oklch(0.14 0.01 0) 0%, oklch(0.12 0.02 25 / 0.6) 100%)",
         border: "1px solid oklch(var(--neon-red) / 0.2)",
         boxShadow:
           "0 4px 24px oklch(var(--neon-red) / 0.06), inset 0 1px 0 oklch(1 0 0 / 0.04)",
+        animationDelay: `${index * 0.07}s`,
       }}
     >
       {/* Top glow line */}
@@ -312,9 +313,9 @@ export function SearchPage() {
   };
 
   return (
-    <main className="container mx-auto px-4 py-12">
+    <main className="container mx-auto px-4 py-6">
       {/* Page Header */}
-      <div className="text-center mb-10">
+      <div className="text-center mb-10 animate-cinema-enter">
         <div
           className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-bold mb-6"
           style={{
@@ -496,7 +497,7 @@ export function SearchPage() {
 
       {/* Loading state while fetching all donors */}
       {isLoadingAll && (
-        <div className="text-center py-12" data-ocid="search.loading_state">
+        <div className="text-center py-6" data-ocid="search.loading_state">
           <Loader2
             className="h-8 w-8 animate-spin mx-auto mb-3"
             style={{ color: "oklch(var(--neon-red))" }}
@@ -556,7 +557,7 @@ export function SearchPage() {
           ) : allDonors.length === 0 ? (
             /* No donors registered yet */
             <div
-              className="text-center py-16 rounded-2xl"
+              className="text-center py-8 rounded-2xl"
               data-ocid="search.empty_state"
               style={{
                 border: "1px dashed oklch(var(--neon-red) / 0.2)",
@@ -587,7 +588,7 @@ export function SearchPage() {
           ) : (
             /* Donors exist but none match filters */
             <div
-              className="text-center py-16 rounded-2xl"
+              className="text-center py-8 rounded-2xl"
               data-ocid="search.empty_state"
               style={{
                 border: "1px dashed oklch(var(--neon-red) / 0.2)",

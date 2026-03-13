@@ -11,6 +11,7 @@ import { useState } from "react";
 import { Footer } from "./components/Footer";
 import { Navbar } from "./components/Navbar";
 import { RegisteredUsersSidebar } from "./components/RegisteredUsersSidebar";
+import { SplashScreen } from "./components/SplashScreen";
 import { AppProvider } from "./contexts/AppContext";
 import { BlogPage } from "./pages/BlogPage";
 import { BloodRequestsPage } from "./pages/BloodRequestsPage";
@@ -256,5 +257,11 @@ declare module "@tanstack/react-router" {
 }
 
 export default function App() {
+  const [showSplash, setShowSplash] = useState(true);
+
+  if (showSplash) {
+    return <SplashScreen onComplete={() => setShowSplash(false)} />;
+  }
+
   return <RouterProvider router={router} />;
 }
