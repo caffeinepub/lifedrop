@@ -10,64 +10,40 @@ const BAR_CONFIGS = [
 
 function createAmbientAudio(ctx: AudioContext): () => void {
   const masterGain = ctx.createGain();
-  masterGain.gain.setValueAtTime(0, ctx.currentTime);
-  // Instant start — fade in over 0.1s instead of 3s
-  masterGain.gain.linearRampToValueAtTime(0.55, ctx.currentTime + 0.1);
+  masterGain.gain.value = 0.5; // instant — no ramp
   masterGain.connect(ctx.destination);
 
-  // Reverb via convolver
-  const convolver = ctx.createConvolver();
-  const reverbLen = ctx.sampleRate * 3;
-  const reverbBuf = ctx.createBuffer(2, reverbLen, ctx.sampleRate);
-  for (let ch = 0; ch < 2; ch++) {
-    const d = reverbBuf.getChannelData(ch);
-    for (let i = 0; i < reverbLen; i++)
-      d[i] = (Math.random() * 2 - 1) * (1 - i / reverbLen) ** 2.5;
-  }
-  convolver.buffer = reverbBuf;
-  const reverbGain = ctx.createGain();
-  reverbGain.gain.value = 0.35;
-  convolver.connect(reverbGain);
-  reverbGain.connect(masterGain);
-
-  // Pads - layered drone oscillators in minor pentatonic
-  const padFreqs = [
-    { freq: 110, gain: 0.045, type: "triangle" as OscillatorType },
-    { freq: 165, gain: 0.028, type: "sine" as OscillatorType },
-    { freq: 220, gain: 0.022, type: "triangle" as OscillatorType },
-    { freq: 247, gain: 0.015, type: "sine" as OscillatorType },
-    { freq: 330, gain: 0.01, type: "sine" as OscillatorType },
+  const padFreqs: { freq: number; gain: number; type: OscillatorType }[] = [
+    { freq: 110, gain: 0.045, type: "triangle" },
+    { freq: 165, gain: 0.028, type: "sine" },
+    { freq: 220, gain: 0.022, type: "triangle" },
+    { freq: 247, gain: 0.015, type: "sine" },
+    { freq: 330, gain: 0.01, type: "sine" },
   ];
-  const oscillators: OscillatorNode[] = [];
   for (const p of padFreqs) {
     const osc = ctx.createOscillator();
     const g = ctx.createGain();
-    // Slow vibrato
     const lfo = ctx.createOscillator();
     const lfoG = ctx.createGain();
     lfo.type = "sine";
     lfo.frequency.value = 0.08 + Math.random() * 0.04;
-    lfoG.gain.value = 0.6;
+    lfoG.gain.value = 0.5;
     lfo.connect(lfoG);
     lfoG.connect(osc.frequency);
     lfo.start();
-
     osc.type = p.type;
     osc.frequency.value = p.freq;
     g.gain.value = p.gain;
     osc.connect(g);
     g.connect(masterGain);
-    g.connect(convolver);
     osc.start();
-    oscillators.push(osc);
   }
 
-  // Soft rain noise
   const bufSize = ctx.sampleRate * 4;
   const noiseBuf = ctx.createBuffer(1, bufSize, ctx.sampleRate);
   const noiseData = noiseBuf.getChannelData(0);
   for (let i = 0; i < bufSize; i++)
-    noiseData[i] = (Math.random() * 2 - 1) * 0.012;
+    noiseData[i] = (Math.random() * 2 - 1) * 0.01;
   const noise = ctx.createBufferSource();
   noise.buffer = noiseBuf;
   noise.loop = true;
@@ -76,52 +52,40 @@ function createAmbientAudio(ctx: AudioContext): () => void {
   rainFilter.frequency.value = 1200;
   rainFilter.Q.value = 0.4;
   const rainGain = ctx.createGain();
-  rainGain.gain.value = 0.08;
+  rainGain.gain.value = 0.06;
   noise.connect(rainFilter);
   rainFilter.connect(rainGain);
   rainGain.connect(masterGain);
   noise.start();
 
-  // Healing frequency chimes (432 Hz, 528 Hz scale)
   const chimeFreqs = [432, 528, 396, 594, 264, 352, 440, 660];
   let chimeTimeout: ReturnType<typeof setTimeout>;
   function scheduleChime() {
-    const delay = 3500 + Math.random() * 7000;
+    const delay = 4000 + Math.random() * 6000;
     chimeTimeout = setTimeout(() => {
-      if (ctx.state === "closed" || ctx.state === "suspended") return;
+      if (ctx.state !== "running") return;
       const freq = chimeFreqs[Math.floor(Math.random() * chimeFreqs.length)];
       const osc = ctx.createOscillator();
       const env = ctx.createGain();
       osc.type = "sine";
       osc.frequency.value = freq;
       env.gain.setValueAtTime(0, ctx.currentTime);
-      env.gain.linearRampToValueAtTime(0.07, ctx.currentTime + 0.04);
-      env.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 5);
+      env.gain.linearRampToValueAtTime(0.06, ctx.currentTime + 0.05);
+      env.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 4);
       osc.connect(env);
       env.connect(masterGain);
-      env.connect(convolver);
       osc.start();
-      osc.stop(ctx.currentTime + 5);
+      osc.stop(ctx.currentTime + 4);
       scheduleChime();
     }, delay);
   }
   scheduleChime();
 
-  // Slow LFO on master volume for breathing effect
-  const breathLfo = ctx.createOscillator();
-  const breathLfoG = ctx.createGain();
-  breathLfo.type = "sine";
-  breathLfo.frequency.value = 0.04;
-  breathLfoG.gain.value = 0.08;
-  breathLfo.connect(breathLfoG);
-  breathLfoG.connect(masterGain.gain);
-  breathLfo.start();
-
   return () => {
     clearTimeout(chimeTimeout);
     masterGain.gain.cancelScheduledValues(ctx.currentTime);
     masterGain.gain.setValueAtTime(masterGain.gain.value, ctx.currentTime);
-    masterGain.gain.linearRampToValueAtTime(0, ctx.currentTime + 1.2);
+    masterGain.gain.linearRampToValueAtTime(0, ctx.currentTime + 0.4);
   };
 }
 
@@ -129,66 +93,50 @@ export function MusicPlayer() {
   const [isPlaying, setIsPlaying] = useState(false);
   const audioCtxRef = useRef<AudioContext | null>(null);
   const cleanupRef = useRef<(() => void) | null>(null);
-  const isPlayingRef = useRef(false);
 
-  const toggle = useCallback(async () => {
+  const toggle = useCallback(() => {
     try {
       const AudioCtx =
         window.AudioContext ||
         (window as unknown as { webkitAudioContext: typeof AudioContext })
           .webkitAudioContext;
 
-      if (!audioCtxRef.current || audioCtxRef.current.state === "closed") {
-        // First play or context was closed — create fresh audio graph
-        const ctx = new AudioCtx();
-        audioCtxRef.current = ctx;
-        if (ctx.state === "suspended") await ctx.resume();
-        cleanupRef.current = createAmbientAudio(ctx);
-        isPlayingRef.current = true;
-        setIsPlaying(true);
-        return;
-      }
-
-      if (isPlayingRef.current) {
-        // Pause — fade out and suspend (preserves audio graph)
+      if (isPlaying) {
         if (cleanupRef.current) {
           cleanupRef.current();
           cleanupRef.current = null;
         }
-        setTimeout(async () => {
-          if (audioCtxRef.current && audioCtxRef.current.state === "running") {
-            await audioCtxRef.current.suspend();
-          }
-        }, 1300);
-        isPlayingRef.current = false;
+        const ctx = audioCtxRef.current;
+        audioCtxRef.current = null;
+        if (ctx)
+          setTimeout(() => {
+            try {
+              ctx.close();
+            } catch {}
+          }, 500);
         setIsPlaying(false);
       } else {
-        // Resume from suspended state
-        const ctx = audioCtxRef.current;
+        const ctx = new AudioCtx();
+        audioCtxRef.current = ctx;
+        // Resume if suspended (needed on some browsers), then start audio
         if (ctx.state === "suspended") {
-          await ctx.resume();
-          cleanupRef.current = createAmbientAudio(ctx);
-          isPlayingRef.current = true;
-          setIsPlaying(true);
-        } else if (ctx.state === "running") {
-          // Already running, just mark as playing
-          cleanupRef.current = createAmbientAudio(ctx);
-          isPlayingRef.current = true;
-          setIsPlaying(true);
+          ctx
+            .resume()
+            .then(() => {
+              cleanupRef.current = createAmbientAudio(ctx);
+            })
+            .catch(() => {
+              cleanupRef.current = createAmbientAudio(ctx);
+            });
         } else {
-          // Closed or unknown — start fresh
-          const newCtx = new AudioCtx();
-          audioCtxRef.current = newCtx;
-          if (newCtx.state === "suspended") await newCtx.resume();
-          cleanupRef.current = createAmbientAudio(newCtx);
-          isPlayingRef.current = true;
-          setIsPlaying(true);
+          cleanupRef.current = createAmbientAudio(ctx);
         }
+        setIsPlaying(true);
       }
     } catch (e) {
       console.error("Audio toggle error:", e);
     }
-  }, []);
+  }, [isPlaying]);
 
   useEffect(() => {
     return () => {

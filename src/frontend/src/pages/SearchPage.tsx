@@ -27,6 +27,8 @@ import {
 import { useMemo, useState } from "react";
 import type { DonorPublicInfo } from "../backend.d";
 import { BloodGroup } from "../backend.d";
+import { BloodFactTicker } from "../components/BloodFactTicker";
+import { DonorRadarDecor } from "../components/DonorRadarDecor";
 import { useDeviceActor } from "../hooks/useDeviceActor";
 import { useAllDonorsList } from "../hooks/useQueries";
 
@@ -347,7 +349,7 @@ export function SearchPage() {
               }}
             >
               <Loader2 className="h-3 w-3 animate-spin" />
-              Connecting to blockchain...
+              Initializing secure connection...
             </span>
           ) : isConnected ? (
             <span
@@ -615,6 +617,68 @@ export function SearchPage() {
           )}
         </>
       )}
+
+      {/* ─── Decorative animations ─────────────────────── */}
+      <div className="px-4 py-10 max-w-4xl mx-auto">
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "1fr 1fr",
+            gap: "32px",
+            alignItems: "center",
+            justifyItems: "center",
+          }}
+        >
+          <DonorRadarDecor height={360} />
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              gap: 16,
+            }}
+          >
+            <div
+              style={{
+                color: "oklch(0.62 0.26 22)",
+                fontSize: 11,
+                fontWeight: 800,
+                letterSpacing: "0.2em",
+                textTransform: "uppercase",
+                fontFamily: "monospace",
+              }}
+            >
+              FIND DONORS FAST
+            </div>
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "1fr 1fr",
+                gap: 10,
+              }}
+            >
+              {["A+", "B+", "O+", "AB+", "A−", "B−", "O−", "AB−"].map((bg) => (
+                <div
+                  key={bg}
+                  style={{
+                    padding: "8px 14px",
+                    borderRadius: 8,
+                    background: "oklch(0.14 0.02 22)",
+                    border: "1px solid oklch(0.62 0.26 22 / 0.25)",
+                    color: "oklch(0.75 0.26 22)",
+                    fontSize: 13,
+                    fontWeight: 800,
+                    textAlign: "center",
+                  }}
+                >
+                  {bg}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+        <BloodFactTicker className="mt-8" />
+      </div>
     </main>
   );
 }

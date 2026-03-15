@@ -14,6 +14,8 @@ import {
 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
+import { BloodFactTicker } from "../components/BloodFactTicker";
+import { SOSRippleDecor } from "../components/SOSRippleDecor";
 import { addNotificationGlobal } from "../hooks/useNotifications";
 import { useBloodRequests, useDeleteBloodRequest } from "../hooks/useQueries";
 import { getOrCreateDeviceIdentity } from "../utils/deviceIdentity";
@@ -245,7 +247,7 @@ export function BloodRequestsPage() {
             style={{ color: "oklch(var(--neon-red))" }}
           />
           <p className="text-muted-foreground text-sm">
-            Connecting to blockchain...
+            Initializing secure connection...
           </p>
         </div>
       ) : sorted.length === 0 ? (
@@ -428,6 +430,72 @@ export function BloodRequestsPage() {
           })}
         </div>
       )}
+
+      {/* ─── Decorative animations ─────────────────────── */}
+      <div className="container mx-auto px-4 py-10 max-w-4xl">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center justify-items-center">
+          <SOSRippleDecor size={240} />
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              gap: 12,
+            }}
+          >
+            <div
+              style={{
+                color: "oklch(0.62 0.26 22)",
+                fontSize: 11,
+                fontWeight: 800,
+                letterSpacing: "0.2em",
+                textTransform: "uppercase",
+                fontFamily: "monospace",
+              }}
+            >
+              URGENCY LEVELS
+            </div>
+            {[
+              { dot: "🟢", label: "Low", desc: "Needed within a week" },
+              { dot: "🟡", label: "Medium", desc: "Needed within 48 hrs" },
+              { dot: "🟠", label: "High", desc: "Needed within 24 hrs" },
+              { dot: "🔴", label: "Critical", desc: "Needed immediately" },
+            ].map((u) => (
+              <div
+                key={u.label}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 10,
+                  padding: "8px 14px",
+                  borderRadius: 10,
+                  background: "oklch(0.14 0.02 22)",
+                  border: "1px solid oklch(0.62 0.26 22 / 0.2)",
+                  width: "100%",
+                  maxWidth: 220,
+                }}
+              >
+                <span style={{ fontSize: 16 }}>{u.dot}</span>
+                <div>
+                  <div
+                    style={{
+                      color: "oklch(0.85 0.1 22)",
+                      fontSize: 12,
+                      fontWeight: 700,
+                    }}
+                  >
+                    {u.label}
+                  </div>
+                  <div style={{ color: "oklch(0.55 0.08 22)", fontSize: 10 }}>
+                    {u.desc}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+        <BloodFactTicker className="mt-8" />
+      </div>
     </main>
   );
 }

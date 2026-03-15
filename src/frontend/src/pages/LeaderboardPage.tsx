@@ -1,6 +1,8 @@
 import { Badge } from "@/components/ui/badge";
 import { Loader2, Trophy } from "lucide-react";
 import { useMemo } from "react";
+import { BloodDropRainDecor } from "../components/BloodDropRainDecor";
+import { BloodFactTicker } from "../components/BloodFactTicker";
 import { useAllDonors } from "../hooks/useQueries";
 
 const bloodGroupLabel: Record<string, string> = {
@@ -219,6 +221,80 @@ export function LeaderboardPage() {
           })}
         </div>
       )}
+
+      {/* ─── Decorative animations ─────────────────────── */}
+      <div className="container mx-auto px-4 py-10 max-w-3xl">
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "1fr 1fr",
+            gap: "32px",
+            alignItems: "center",
+            justifyItems: "center",
+          }}
+        >
+          <BloodDropRainDecor height={380} />
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              gap: 12,
+            }}
+          >
+            <div
+              style={{
+                color: "oklch(0.85 0.18 85)",
+                fontSize: 11,
+                fontWeight: 800,
+                letterSpacing: "0.2em",
+                textTransform: "uppercase",
+                fontFamily: "monospace",
+              }}
+            >
+              TOP DONORS
+            </div>
+            {[
+              { rank: "🥇", label: "25+ donations", title: "Life Saver" },
+              { rank: "🥈", label: "10–24 donations", title: "Gold Donor" },
+              { rank: "🥉", label: "5–9 donations", title: "Silver Donor" },
+              { rank: "🩸", label: "1–4 donations", title: "New Donor" },
+            ].map((tier) => (
+              <div
+                key={tier.title}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 10,
+                  padding: "8px 14px",
+                  borderRadius: 10,
+                  background: "oklch(0.14 0.02 22)",
+                  border: "1px solid oklch(0.62 0.26 22 / 0.2)",
+                  width: "100%",
+                  maxWidth: 220,
+                }}
+              >
+                <span style={{ fontSize: 18 }}>{tier.rank}</span>
+                <div>
+                  <div
+                    style={{
+                      color: "oklch(0.85 0.1 22)",
+                      fontSize: 12,
+                      fontWeight: 700,
+                    }}
+                  >
+                    {tier.title}
+                  </div>
+                  <div style={{ color: "oklch(0.55 0.08 22)", fontSize: 10 }}>
+                    {tier.label}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+        <BloodFactTicker className="mt-8" />
+      </div>
     </main>
   );
 }

@@ -8,6 +8,7 @@ import {
 } from "@tanstack/react-router";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useState } from "react";
+import { AmbientBackground } from "./components/AmbientBackground";
 import { Footer } from "./components/Footer";
 import { Navbar } from "./components/Navbar";
 import { RegisteredUsersSidebar } from "./components/RegisteredUsersSidebar";
@@ -38,7 +39,8 @@ function AppShell() {
 
   return (
     <AppProvider>
-      <div className="min-h-screen flex flex-col">
+      <AmbientBackground />
+      <div className="min-h-screen flex flex-col relative z-10">
         <Navbar />
         <div className="flex flex-1 overflow-hidden relative">
           {/* Main content */}

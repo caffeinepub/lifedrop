@@ -102,7 +102,7 @@ export function EmergencyRequestPage() {
       const msg = err instanceof Error ? err.message : String(err);
       const lower = msg.toLowerCase();
       if (lower.includes("stopped") || lower.includes("canister")) {
-        toast.error("Connecting to blockchain... please wait.");
+        toast.error("Initializing secure connection... please wait.");
       } else if (lower.includes("network") || lower.includes("fetch")) {
         toast.error(
           "Network error. Please check your connection and try again.",

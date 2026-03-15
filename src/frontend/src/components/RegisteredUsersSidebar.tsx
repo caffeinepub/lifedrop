@@ -152,7 +152,7 @@ export function RegisteredUsersSidebar() {
           style={{ color: "oklch(var(--neon-red) / 0.5)" }}
         />
         <p className="text-xs text-muted-foreground/60 text-center">
-          Connecting to blockchain...
+          Initializing secure connection...
         </p>
       </div>
     );

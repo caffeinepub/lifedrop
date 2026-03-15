@@ -9,7 +9,9 @@ import {
   Users,
 } from "lucide-react";
 import { useState } from "react";
+import { BloodFactTicker } from "../components/BloodFactTicker";
 import { CampPosterDialog } from "../components/CampPosterDialog";
+import { HeartbeatDecor } from "../components/HeartbeatDecor";
 import { type CampAnnouncement, useApp } from "../contexts/AppContext";
 
 const statusConfig = {
@@ -359,6 +361,75 @@ export function CampsPage() {
           if (!open) setPosterCamp(null);
         }}
       />
+
+      {/* ─── Decorative animations ─────────────────────── */}
+      <div className="container mx-auto px-4 py-10 max-w-5xl">
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "1fr 1fr",
+            gap: "32px",
+            alignItems: "center",
+            justifyItems: "center",
+          }}
+        >
+          <HeartbeatDecor width={280} height={180} />
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              gap: 14,
+            }}
+          >
+            <div
+              style={{
+                color: "oklch(0.65 0.26 22)",
+                fontSize: 11,
+                fontWeight: 800,
+                letterSpacing: "0.2em",
+                textTransform: "uppercase",
+                fontFamily: "monospace",
+              }}
+            >
+              CAMP SCHEDULE
+            </div>
+            {[
+              { icon: "🩸", text: "Free health checkup" },
+              { icon: "💉", text: "Safe donation process" },
+              { icon: "🏥", text: "Certified staff present" },
+              { icon: "🎖️", text: "Donor certificate" },
+            ].map((item) => (
+              <div
+                key={item.text}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 10,
+                  padding: "8px 16px",
+                  borderRadius: 10,
+                  background: "oklch(0.14 0.02 22)",
+                  border: "1px solid oklch(0.62 0.26 22 / 0.2)",
+                  width: "100%",
+                  maxWidth: 240,
+                }}
+              >
+                <span style={{ fontSize: 16 }}>{item.icon}</span>
+                <span
+                  style={{
+                    color: "oklch(0.75 0.1 22)",
+                    fontSize: 12,
+                    fontWeight: 600,
+                  }}
+                >
+                  {item.text}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+        <BloodFactTicker className="mt-8" />
+      </div>
     </main>
   );
 }

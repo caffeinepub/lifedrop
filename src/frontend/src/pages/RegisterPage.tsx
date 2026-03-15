@@ -250,14 +250,15 @@ function useRegisterLogic(role: Role) {
       setStatus("registering");
       setErrorMsg("");
       let waited = 0;
-      while (!actorRef.current && waited < 4000) {
+      while (!actorRef.current && waited < 12000) {
         await new Promise((r) => setTimeout(r, 200));
-        waited += 500;
+        waited += 200;
       }
       resolvedActor = actorRef.current;
       if (!resolvedActor) {
         setStatus("error");
-        const msg = "Connecting to blockchain... please wait.";
+        const msg =
+          "Setting up your secure session. Please try again in a moment.";
         setErrorMsg(msg);
         toast.error(msg);
         setTimeout(() => setStatus("idle"), 6000);
@@ -425,7 +426,7 @@ function useRegisterLogic(role: Role) {
         setStatus("error");
         const friendlyMsg =
           lowerMsg.includes("canister") || lowerMsg.includes("stopped")
-            ? "Connecting to blockchain... please wait."
+            ? "Setting up your secure session. Please try again in a moment."
             : lowerMsg.includes("network") || lowerMsg.includes("fetch")
               ? "Network error. Please check your connection and try again."
               : "Registration failed. Please try again.";

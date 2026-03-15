@@ -1,5 +1,6 @@
 import { Badge } from "@/components/ui/badge";
 import { BookOpen, ChevronRight } from "lucide-react";
+import { BloodCellDecor } from "../components/BloodCellDecor";
 
 const posts = [
   {
@@ -799,6 +800,22 @@ export function BlogPage() {
             ))}
           </div>
         </div>
+      </div>
+
+      {/* ─── More 3D Decorations ─────────────────────── */}
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: "32px",
+          justifyContent: "center",
+          flexWrap: "wrap",
+          marginTop: "48px",
+          paddingTop: "32px",
+          borderTop: "1px solid oklch(0.22 0.01 20)",
+        }}
+      >
+        <BloodCellDecor height={320} />
       </div>
     </main>
   );
