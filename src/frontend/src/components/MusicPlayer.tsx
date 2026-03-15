@@ -11,7 +11,8 @@ const BAR_CONFIGS = [
 function createAmbientAudio(ctx: AudioContext): () => void {
   const masterGain = ctx.createGain();
   masterGain.gain.setValueAtTime(0, ctx.currentTime);
-  masterGain.gain.linearRampToValueAtTime(0.55, ctx.currentTime + 3);
+  // Instant start — fade in over 0.1s instead of 3s
+  masterGain.gain.linearRampToValueAtTime(0.55, ctx.currentTime + 0.1);
   masterGain.connect(ctx.destination);
 
   // Reverb via convolver
@@ -117,23 +118,10 @@ function createAmbientAudio(ctx: AudioContext): () => void {
   breathLfo.start();
 
   return () => {
+    clearTimeout(chimeTimeout);
     masterGain.gain.cancelScheduledValues(ctx.currentTime);
     masterGain.gain.setValueAtTime(masterGain.gain.value, ctx.currentTime);
     masterGain.gain.linearRampToValueAtTime(0, ctx.currentTime + 1.2);
-    clearTimeout(chimeTimeout);
-    setTimeout(() => {
-      for (const o of oscillators) {
-        try {
-          o.stop();
-        } catch {}
-      }
-      try {
-        breathLfo.stop();
-      } catch {}
-      try {
-        noise.stop();
-      } catch {}
-    }, 1400);
   };
 }
 
@@ -141,47 +129,66 @@ export function MusicPlayer() {
   const [isPlaying, setIsPlaying] = useState(false);
   const audioCtxRef = useRef<AudioContext | null>(null);
   const cleanupRef = useRef<(() => void) | null>(null);
+  const isPlayingRef = useRef(false);
 
   const toggle = useCallback(async () => {
-    if (isPlaying) {
-      if (cleanupRef.current) {
-        cleanupRef.current();
-        cleanupRef.current = null;
-      }
-      setTimeout(() => {
-        if (audioCtxRef.current) {
-          try {
-            audioCtxRef.current.close();
-          } catch {}
-          audioCtxRef.current = null;
-        }
-      }, 1500);
-      setIsPlaying(false);
-      return;
-    }
     try {
       const AudioCtx =
         window.AudioContext ||
         (window as unknown as { webkitAudioContext: typeof AudioContext })
           .webkitAudioContext;
-      // Always create a fresh context to avoid suspended state issues
-      if (audioCtxRef.current) {
-        try {
-          audioCtxRef.current.close();
-        } catch {}
+
+      if (!audioCtxRef.current || audioCtxRef.current.state === "closed") {
+        // First play or context was closed — create fresh audio graph
+        const ctx = new AudioCtx();
+        audioCtxRef.current = ctx;
+        if (ctx.state === "suspended") await ctx.resume();
+        cleanupRef.current = createAmbientAudio(ctx);
+        isPlayingRef.current = true;
+        setIsPlaying(true);
+        return;
       }
-      const ctx = new AudioCtx();
-      audioCtxRef.current = ctx;
-      // Resume is required to unblock autoplay policy
-      if (ctx.state === "suspended") {
-        await ctx.resume();
+
+      if (isPlayingRef.current) {
+        // Pause — fade out and suspend (preserves audio graph)
+        if (cleanupRef.current) {
+          cleanupRef.current();
+          cleanupRef.current = null;
+        }
+        setTimeout(async () => {
+          if (audioCtxRef.current && audioCtxRef.current.state === "running") {
+            await audioCtxRef.current.suspend();
+          }
+        }, 1300);
+        isPlayingRef.current = false;
+        setIsPlaying(false);
+      } else {
+        // Resume from suspended state
+        const ctx = audioCtxRef.current;
+        if (ctx.state === "suspended") {
+          await ctx.resume();
+          cleanupRef.current = createAmbientAudio(ctx);
+          isPlayingRef.current = true;
+          setIsPlaying(true);
+        } else if (ctx.state === "running") {
+          // Already running, just mark as playing
+          cleanupRef.current = createAmbientAudio(ctx);
+          isPlayingRef.current = true;
+          setIsPlaying(true);
+        } else {
+          // Closed or unknown — start fresh
+          const newCtx = new AudioCtx();
+          audioCtxRef.current = newCtx;
+          if (newCtx.state === "suspended") await newCtx.resume();
+          cleanupRef.current = createAmbientAudio(newCtx);
+          isPlayingRef.current = true;
+          setIsPlaying(true);
+        }
       }
-      cleanupRef.current = createAmbientAudio(ctx);
-      setIsPlaying(true);
     } catch (e) {
-      console.error("Audio init error:", e);
+      console.error("Audio toggle error:", e);
     }
-  }, [isPlaying]);
+  }, []);
 
   useEffect(() => {
     return () => {

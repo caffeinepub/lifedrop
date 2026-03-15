@@ -6,14 +6,12 @@ import { Link } from "@tanstack/react-router";
 import {
   Activity,
   AlertTriangle,
-  Bolt,
   Building2,
   ChevronRight,
   Clock,
   Droplets,
   Globe,
   Heart,
-  Lock,
   Shield,
   Users,
   Zap,
@@ -257,6 +255,63 @@ const heroParticles = [
   },
 ];
 
+/** Inline SVG blood drop — neon red teardrop with glow and highlight */
+function BloodDropSvg() {
+  return (
+    <svg
+      viewBox="0 0 140 160"
+      width="140"
+      height="160"
+      aria-hidden="true"
+      style={{
+        filter:
+          "drop-shadow(0 0 18px oklch(0.65 0.28 22 / 0.85)) drop-shadow(0 0 40px oklch(0.65 0.28 22 / 0.5))",
+        animation: "float-glow-drop 3s ease-in-out infinite",
+      }}
+    >
+      <defs>
+        <radialGradient id="dropGrad" cx="40%" cy="35%" r="65%">
+          <stop offset="0%" stopColor="oklch(0.78 0.22 22)" />
+          <stop offset="55%" stopColor="oklch(0.62 0.28 22)" />
+          <stop offset="100%" stopColor="oklch(0.42 0.26 22)" />
+        </radialGradient>
+        <radialGradient id="dropHighlight" cx="35%" cy="28%" r="40%">
+          <stop offset="0%" stopColor="white" stopOpacity="0.55" />
+          <stop offset="100%" stopColor="white" stopOpacity="0" />
+        </radialGradient>
+      </defs>
+      {/* Main blood drop shape — teardrop: pointed top, rounded bottom */}
+      <path
+        d="M70 8 C70 8 18 62 18 95 C18 126 41 148 70 148 C99 148 122 126 122 95 C122 62 70 8 70 8 Z"
+        fill="url(#dropGrad)"
+      />
+      {/* Inner highlight for 3D glass look */}
+      <path
+        d="M70 8 C70 8 18 62 18 95 C18 126 41 148 70 148 C99 148 122 126 122 95 C122 62 70 8 70 8 Z"
+        fill="url(#dropHighlight)"
+      />
+      {/* Small specular glint */}
+      <ellipse
+        cx="50"
+        cy="55"
+        rx="10"
+        ry="16"
+        fill="white"
+        opacity="0.18"
+        transform="rotate(-20 50 55)"
+      />
+      <style>
+        {`
+          @keyframes float-glow-drop {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
+          }
+        `}
+      </style>
+    </svg>
+  );
+}
+
 export function HomePage() {
   const { t } = useApp();
   const { data: backendStats } = useStats();
@@ -323,7 +378,7 @@ export function HomePage() {
     <main className="overflow-x-hidden">
       {/* ─── Hero ────────────────────────────────────────────── */}
       <section
-        className="relative min-h-[92vh] flex items-center overflow-hidden"
+        className="relative min-h-[90vh] sm:min-h-[92vh] flex items-center overflow-hidden"
         style={{
           backgroundImage: "url('/assets/generated/hero-bg.dim_1600x800.jpg')",
           backgroundSize: "cover",
@@ -415,9 +470,9 @@ export function HomePage() {
           ))}
         </div>
 
-        {/* Decorative orbit ring (desktop) */}
-        <div className="absolute right-8 md:right-20 top-1/2 -translate-y-1/2 hidden md:block">
-          <div className="relative w-72 h-72 flex items-center justify-center">
+        {/* Decorative orbit ring with blood drop (desktop only) */}
+        <div className="absolute right-8 md:right-16 lg:right-20 top-1/2 -translate-y-1/2 hidden md:flex items-center justify-center">
+          <div className="relative w-64 h-64 lg:w-72 lg:h-72 flex items-center justify-center">
             {/* Outer spinning border */}
             <div
               className="absolute inset-0 rounded-full animate-spin-glow will-change-transform"
@@ -459,16 +514,9 @@ export function HomePage() {
                 />
               </div>
             ))}
-            {/* Logo */}
-            <div className="animate-float-glow will-change-transform relative z-10">
-              <img
-                src="/assets/generated/lifedrop-logo.dim_200x200.png"
-                alt=""
-                className="w-44 h-44 object-contain"
-                style={{
-                  filter: "drop-shadow(0 0 28px oklch(0.65 0.28 22 / 0.7))",
-                }}
-              />
+            {/* Blood drop SVG — no external image dependency */}
+            <div className="relative z-10 flex items-center justify-center">
+              <BloodDropSvg />
             </div>
           </div>
         </div>

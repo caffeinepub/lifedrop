@@ -251,6 +251,7 @@ export function DonorDashboard() {
       bloodGroup: userProfile.bloodGroup ?? "",
       city: userProfile.city ?? "",
       totalDonations: totalDonations,
+      phone: (userProfile as any).phone ?? "",
     };
     localStorage.setItem(`lifedrop_donor_card_${id}`, JSON.stringify(cardData));
     return id;
@@ -277,6 +278,7 @@ export function DonorDashboard() {
             bloodGroup: userProfile.bloodGroup ?? "",
             city: userProfile.city ?? "",
             totalDonations: Number(callerDonorProfile.totalDonations),
+            phone: (userProfile as any).phone ?? "",
           };
           localStorage.setItem(
             `lifedrop_donor_card_${id}`,
@@ -460,6 +462,14 @@ export function DonorDashboard() {
                 Donations:{" "}
                 <span className="text-foreground">{totalDonations}</span>
               </div>
+              {(userProfile as any).phone && (
+                <div>
+                  Phone:{" "}
+                  <span className="text-foreground">
+                    {(userProfile as any).phone}
+                  </span>
+                </div>
+              )}
             </div>
           </button>
 

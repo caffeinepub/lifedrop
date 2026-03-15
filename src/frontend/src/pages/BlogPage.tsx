@@ -100,6 +100,84 @@ const posts = [
   },
 ];
 
+const bloodGroups = [
+  {
+    group: "A+",
+    canGive: "A+, AB+",
+    canReceive: "A+, A-, O+, O-",
+    color: "oklch(0.62 0.25 22)",
+  },
+  {
+    group: "A-",
+    canGive: "A+, A-, AB+, AB-",
+    canReceive: "A-, O-",
+    color: "oklch(0.55 0.22 22)",
+  },
+  {
+    group: "B+",
+    canGive: "B+, AB+",
+    canReceive: "B+, B-, O+, O-",
+    color: "oklch(0.62 0.22 200)",
+  },
+  {
+    group: "B-",
+    canGive: "B+, B-, AB+, AB-",
+    canReceive: "B-, O-",
+    color: "oklch(0.55 0.2 200)",
+  },
+  {
+    group: "AB+",
+    canGive: "AB+ only",
+    canReceive: "All types",
+    color: "oklch(0.62 0.2 280)",
+  },
+  {
+    group: "AB-",
+    canGive: "AB+, AB-",
+    canReceive: "A-, B-, AB-, O-",
+    color: "oklch(0.55 0.18 280)",
+  },
+  {
+    group: "O+",
+    canGive: "A+, B+, AB+, O+",
+    canReceive: "O+, O-",
+    color: "oklch(0.62 0.22 140)",
+  },
+  {
+    group: "O-",
+    canGive: "All types",
+    canReceive: "O- only",
+    color: "oklch(0.55 0.22 140)",
+  },
+];
+
+const bloodFacts = [
+  {
+    num: "4.5M",
+    label: "Donations Every Year in India",
+    color: "oklch(0.65 0.28 22)",
+    icon: "🩸",
+  },
+  {
+    num: "3x",
+    label: "Lives Saved Per Donation",
+    color: "oklch(0.62 0.22 140)",
+    icon: "💚",
+  },
+  {
+    num: "56",
+    label: "Days Between Whole Blood Donations",
+    color: "oklch(0.62 0.2 240)",
+    icon: "⏱️",
+  },
+  {
+    num: "7%",
+    label: "Of People Have O- Universal Donor Type",
+    color: "oklch(0.65 0.2 60)",
+    icon: "🌍",
+  },
+];
+
 export function BlogPage() {
   return (
     <main className="container mx-auto px-4 py-12">
@@ -254,6 +332,473 @@ export function BlogPage() {
           Now that you know the facts, take the next step and register as a
           donor.
         </p>
+      </div>
+
+      {/* ── Animated Blood Science Section ── */}
+      <div
+        className="mt-20 relative overflow-hidden"
+        data-ocid="blog.science.section"
+      >
+        <style>{`
+          @keyframes spinOrbit {
+            from { transform: rotate(0deg); }
+            to   { transform: rotate(360deg); }
+          }
+          @keyframes bloodPulse {
+            0%, 100% { transform: scale(1) translateY(0); filter: drop-shadow(0 0 12px oklch(0.65 0.28 22 / 0.6)); }
+            50%       { transform: scale(1.07) translateY(-7px); filter: drop-shadow(0 0 28px oklch(0.65 0.28 22 / 0.95)); }
+          }
+          @keyframes pulseRing {
+            0%   { opacity: 0.55; transform: scale(0.75); }
+            100% { opacity: 0;    transform: scale(1.9); }
+          }
+          @keyframes slideInRight {
+            from { opacity: 0; transform: translateX(32px); }
+            to   { opacity: 1; transform: translateX(0); }
+          }
+          @keyframes scaleIn {
+            from { opacity: 0; transform: scale(0.65); }
+            to   { opacity: 1; transform: scale(1); }
+          }
+          @keyframes floatUp {
+            0%, 100% { transform: translateY(0px); }
+            50%       { transform: translateY(-8px); }
+          }
+          @keyframes orbitDot1 {
+            from { transform: rotate(0deg) translateX(130px) rotate(0deg); }
+            to   { transform: rotate(360deg) translateX(130px) rotate(-360deg); }
+          }
+          @keyframes orbitDot2 {
+            from { transform: rotate(180deg) translateX(100px) rotate(-180deg); }
+            to   { transform: rotate(540deg) translateX(100px) rotate(-540deg); }
+          }
+          @keyframes shimmerText {
+            0%   { background-position: -200% center; }
+            100% { background-position: 200% center; }
+          }
+        `}</style>
+
+        {/* Section header */}
+        <div className="text-center mb-12">
+          <span
+            className="inline-block text-xs font-bold tracking-widest uppercase px-4 py-1.5 rounded-full mb-4"
+            style={{
+              background: "oklch(0.65 0.28 22 / 0.1)",
+              border: "1px solid oklch(0.65 0.28 22 / 0.25)",
+              color: "oklch(0.65 0.28 22)",
+            }}
+          >
+            The Science of Saving Lives
+          </span>
+          <h2 className="font-display text-3xl md:text-4xl font-black mb-3">
+            Blood Donation{" "}
+            <span
+              style={{
+                background:
+                  "linear-gradient(90deg, oklch(0.7 0.28 22), oklch(0.65 0.25 350), oklch(0.7 0.28 22))",
+                backgroundSize: "200% auto",
+                WebkitBackgroundClip: "text",
+                WebkitTextFillColor: "transparent",
+                backgroundClip: "text",
+                animation: "shimmerText 3s linear infinite",
+              }}
+            >
+              Science
+            </span>
+          </h2>
+          <p className="text-muted-foreground max-w-md mx-auto">
+            The biology behind every life-saving drop
+          </p>
+        </div>
+
+        {/* 3D animated content grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 items-center">
+          {/* Left: Animated 3D Blood Drop + orbiting rings */}
+          <div
+            className="flex justify-center items-center relative"
+            style={{ height: "380px" }}
+            aria-hidden="true"
+          >
+            {/* Background glow */}
+            <div
+              className="absolute"
+              style={{
+                width: "260px",
+                height: "260px",
+                borderRadius: "50%",
+                background:
+                  "radial-gradient(circle, oklch(0.65 0.28 22 / 0.08) 0%, transparent 70%)",
+              }}
+            />
+
+            {/* Outer orbit ring 1 */}
+            <div
+              className="absolute"
+              style={{
+                width: "300px",
+                height: "300px",
+                border: "1px solid oklch(0.65 0.28 22 / 0.2)",
+                borderRadius: "50%",
+                animation: "spinOrbit 14s linear infinite",
+              }}
+            >
+              <div
+                style={{
+                  position: "absolute",
+                  top: "-7px",
+                  left: "50%",
+                  width: "14px",
+                  height: "14px",
+                  backgroundColor: "oklch(0.65 0.28 22)",
+                  borderRadius: "50%",
+                  boxShadow: "0 0 12px oklch(0.65 0.28 22)",
+                  transform: "translateX(-50%)",
+                }}
+              />
+            </div>
+
+            {/* Orbit ring 2 — reverse */}
+            <div
+              className="absolute"
+              style={{
+                width: "240px",
+                height: "240px",
+                border: "1px solid oklch(0.62 0.2 200 / 0.22)",
+                borderRadius: "50%",
+                animation: "spinOrbit 9s linear infinite reverse",
+              }}
+            >
+              <div
+                style={{
+                  position: "absolute",
+                  bottom: "-6px",
+                  left: "50%",
+                  width: "11px",
+                  height: "11px",
+                  backgroundColor: "oklch(0.62 0.2 200)",
+                  borderRadius: "50%",
+                  boxShadow: "0 0 10px oklch(0.62 0.2 200)",
+                  transform: "translateX(-50%)",
+                }}
+              />
+            </div>
+
+            {/* Orbit ring 3 — diagonal */}
+            <div
+              className="absolute"
+              style={{
+                width: "190px",
+                height: "190px",
+                border: "1px dashed oklch(0.62 0.18 280 / 0.2)",
+                borderRadius: "50%",
+                animation: "spinOrbit 6s linear infinite",
+                transform: "rotateX(60deg)",
+              }}
+            />
+
+            {/* Centre: Large animated blood drop */}
+            <div
+              style={{
+                position: "relative",
+                zIndex: 10,
+                animation: "bloodPulse 3.2s ease-in-out infinite",
+              }}
+            >
+              <svg
+                width="108"
+                height="130"
+                viewBox="0 0 100 120"
+                fill="none"
+                role="img"
+                aria-label="Animated blood drop illustration"
+              >
+                <title>Blood Drop</title>
+                <defs>
+                  <linearGradient id="dropGrad2" x1="0" y1="0" x2="0" y2="1">
+                    <stop
+                      offset="0%"
+                      stopColor="oklch(0.72 0.27 22)"
+                      stopOpacity="0.9"
+                    />
+                    <stop
+                      offset="100%"
+                      stopColor="oklch(0.42 0.3 12)"
+                      stopOpacity="1"
+                    />
+                  </linearGradient>
+                  <filter id="dropGlow">
+                    <feGaussianBlur stdDeviation="3.5" result="blur" />
+                    <feMerge>
+                      <feMergeNode in="blur" />
+                      <feMergeNode in="SourceGraphic" />
+                    </feMerge>
+                  </filter>
+                </defs>
+                <path
+                  d="M50 5 C50 5, 8 56, 8 76 C8 98 27 116 50 116 C73 116 92 98 92 76 C92 56 50 5 50 5Z"
+                  fill="url(#dropGrad2)"
+                  filter="url(#dropGlow)"
+                />
+                <path
+                  d="M50 5 C50 5, 8 56, 8 76 C8 98 27 116 50 116 C73 116 92 98 92 76 C92 56 50 5 50 5Z"
+                  fill="none"
+                  stroke="oklch(0.82 0.24 22 / 0.5)"
+                  strokeWidth="1.5"
+                />
+                {/* Highlight shine */}
+                <ellipse
+                  cx="34"
+                  cy="55"
+                  rx="7"
+                  ry="14"
+                  fill="white"
+                  opacity="0.22"
+                  transform="rotate(-22 34 55)"
+                />
+                {/* Inner cell icon */}
+                <circle
+                  cx="50"
+                  cy="82"
+                  r="13"
+                  fill="oklch(0.32 0.24 10 / 0.55)"
+                />
+                <text
+                  x="50"
+                  y="87"
+                  textAnchor="middle"
+                  fontSize="11"
+                  fill="white"
+                  fontWeight="bold"
+                >
+                  RBC
+                </text>
+              </svg>
+            </div>
+
+            {/* Pulse rings emanating from the drop */}
+            {[1, 2, 3].map((i) => (
+              <div
+                key={i}
+                className="absolute rounded-full"
+                style={{
+                  width: `${70 + i * 44}px`,
+                  height: `${70 + i * 44}px`,
+                  border: "1px solid oklch(0.65 0.28 22 / 0.18)",
+                  animation: `pulseRing 3s ease-out ${i * 1}s infinite`,
+                }}
+              />
+            ))}
+
+            {/* Floating micro-labels */}
+            {[
+              {
+                label: "Haemoglobin",
+                top: "10%",
+                left: "2%",
+                color: "oklch(0.65 0.28 22)",
+              },
+              {
+                label: "Plasma 55%",
+                top: "70%",
+                left: "5%",
+                color: "oklch(0.62 0.2 200)",
+              },
+              {
+                label: "Platelets",
+                top: "18%",
+                right: "4%",
+                color: "oklch(0.62 0.2 280)",
+              },
+              {
+                label: "RBC 45%",
+                top: "72%",
+                right: "2%",
+                color: "oklch(0.62 0.2 140)",
+              },
+            ].map((lbl) => (
+              <div
+                key={lbl.label}
+                className="absolute text-xs font-bold px-2 py-1 rounded-lg"
+                style={{
+                  top: lbl.top,
+                  left: "left" in lbl ? lbl.left : undefined,
+                  right: "right" in lbl ? lbl.right : undefined,
+                  color: lbl.color,
+                  background: `${lbl.color.replace(")", " / 0.1)")}`,
+                  border: `1px solid ${lbl.color.replace(")", " / 0.3)")}`,
+                  animation: `floatUp 4s ease-in-out ${Math.random() * 2}s infinite`,
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {lbl.label}
+              </div>
+            ))}
+          </div>
+
+          {/* Right: Animated fact cards */}
+          <div className="space-y-4">
+            {bloodFacts.map((fact, i) => (
+              <div
+                key={fact.label}
+                className="flex items-center gap-4 p-4 rounded-xl"
+                style={{
+                  background: `${fact.color.replace(")", " / 0.07)")}`,
+                  border: `1px solid ${fact.color.replace(")", " / 0.22)")}`,
+                  animation: `slideInRight 0.6s ease-out ${i * 0.12 + 0.15}s both`,
+                }}
+              >
+                <div className="text-3xl">{fact.icon}</div>
+                <div>
+                  <div
+                    className="text-3xl font-black leading-none"
+                    style={{ color: fact.color }}
+                  >
+                    {fact.num}
+                  </div>
+                  <div className="text-sm text-muted-foreground mt-0.5">
+                    {fact.label}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Blood Group Compatibility Grid */}
+        <div
+          className="mt-14 p-6 md:p-8 rounded-2xl"
+          style={{
+            background: "oklch(var(--card))",
+            border: "1px solid oklch(var(--border))",
+          }}
+          data-ocid="blog.compatibility.card"
+        >
+          <h3 className="font-display text-xl md:text-2xl font-bold mb-2 text-center">
+            Blood Group Compatibility
+          </h3>
+          <p className="text-xs text-muted-foreground text-center mb-6">
+            Hover over each type to see who can give and receive
+          </p>
+          <div className="grid grid-cols-4 sm:grid-cols-8 gap-3">
+            {bloodGroups.map((bg, i) => (
+              <div
+                key={bg.group}
+                data-ocid={`blog.bloodgroup.item.${i + 1}`}
+                className="text-center p-3 rounded-xl cursor-pointer hover:scale-110 transition-transform group relative"
+                style={{
+                  background: `${bg.color.replace(")", " / 0.09)")}`,
+                  border: `1px solid ${bg.color.replace(")", " / 0.28)")}`,
+                  animation: `scaleIn 0.45s ease-out ${i * 0.055}s both`,
+                }}
+                title={`Can give to: ${bg.canGive} | Can receive from: ${bg.canReceive}`}
+              >
+                <div
+                  className="font-black text-xl leading-none"
+                  style={{ color: bg.color }}
+                >
+                  {bg.group}
+                </div>
+                {/* Tooltip on hover */}
+                <div
+                  className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 z-20 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-200"
+                  style={{ minWidth: "140px" }}
+                >
+                  <div
+                    className="text-xs rounded-lg p-2 text-left"
+                    style={{
+                      background: "oklch(var(--popover))",
+                      border: `1px solid ${bg.color.replace(")", " / 0.35)")}`,
+                      color: "oklch(var(--popover-foreground))",
+                    }}
+                  >
+                    <div
+                      className="font-semibold mb-1"
+                      style={{ color: bg.color }}
+                    >
+                      Gives to:
+                    </div>
+                    <div className="mb-1">{bg.canGive}</div>
+                    <div
+                      className="font-semibold mb-1"
+                      style={{ color: bg.color }}
+                    >
+                      Receives from:
+                    </div>
+                    <div>{bg.canReceive}</div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Donation process timeline */}
+        <div className="mt-12">
+          <h3 className="font-display text-xl font-bold text-center mb-8">
+            What Happens During a Donation?
+          </h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+            {[
+              {
+                step: "01",
+                title: "Registration",
+                desc: "Fill a quick health form and show ID",
+                icon: "📋",
+                color: "oklch(0.62 0.25 22)",
+              },
+              {
+                step: "02",
+                title: "Screening",
+                desc: "BP, Hb level, and pulse check in minutes",
+                icon: "🩺",
+                color: "oklch(0.62 0.2 200)",
+              },
+              {
+                step: "03",
+                title: "Donation",
+                desc: "450ml collected in 8-10 minutes only",
+                icon: "🩸",
+                color: "oklch(0.62 0.22 280)",
+              },
+              {
+                step: "04",
+                title: "Refresh",
+                desc: "Rest 10 mins, have juice and a snack",
+                icon: "🧃",
+                color: "oklch(0.62 0.2 140)",
+              },
+            ].map((s, i) => (
+              <div
+                key={s.step}
+                className="relative p-5 rounded-xl text-center"
+                style={{
+                  background: `${s.color.replace(")", " / 0.07)")}`,
+                  border: `1px solid ${s.color.replace(")", " / 0.2)")}`,
+                  animation: `scaleIn 0.5s ease-out ${i * 0.1 + 0.2}s both`,
+                }}
+              >
+                <div className="text-3xl mb-3">{s.icon}</div>
+                <div
+                  className="text-xs font-black tracking-widest mb-1"
+                  style={{ color: `${s.color.replace(")", " / 0.5)")}` }}
+                >
+                  STEP {s.step}
+                </div>
+                <div className="font-bold mb-1" style={{ color: s.color }}>
+                  {s.title}
+                </div>
+                <div className="text-xs text-muted-foreground">{s.desc}</div>
+                {/* Connector line (not on last item) */}
+                {i < 3 && (
+                  <div
+                    className="hidden md:block absolute top-1/2 -right-2 w-4 h-px"
+                    style={{ background: `${s.color.replace(")", " / 0.3)")}` }}
+                  />
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
     </main>
   );
