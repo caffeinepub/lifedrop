@@ -15,6 +15,7 @@ import {
 import { useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { CampPosterDialog } from "../../components/CampPosterDialog";
+import { DeleteAccountSection } from "../../components/DeleteAccountSection";
 import { PhoneInput, extractPhoneDigits } from "../../components/PhoneInput";
 import { type CampAnnouncement, useApp } from "../../contexts/AppContext";
 import { useSearchDonors } from "../../hooks/useQueries";
@@ -651,6 +652,7 @@ export function NGODashboard() {
           if (!open) setPosterCamp(null);
         }}
       />
+      <DeleteAccountSection />
     </main>
   );
 }

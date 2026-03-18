@@ -50,6 +50,7 @@ export function useCreateBloodRequest() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["bloodRequests"] });
+      qc.invalidateQueries({ queryKey: ["globalNotifications"] });
     },
   });
 }
@@ -61,7 +62,7 @@ export function useAcceptBloodRequest() {
     mutationFn: async (requestId: bigint) => {
       if (!actor) throw new Error("Not connected to backend");
       try {
-        return await actor.acceptBloodRequest(requestId);
+        return await (actor as any).acceptBloodRequest(requestId);
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
         if (
@@ -87,7 +88,7 @@ export function useCompleteBloodRequest() {
     mutationFn: async (requestId: bigint) => {
       if (!actor) throw new Error("Not connected to backend");
       try {
-        return await actor.completeBloodRequest(requestId);
+        return await (actor as any).completeBloodRequest(requestId);
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
         if (
@@ -117,6 +118,59 @@ export function useDeleteBloodRequest() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["bloodRequests"] });
       qc.invalidateQueries({ queryKey: ["stats"] });
+    },
+  });
+}
+
+// ─── Fulfill Blood Request (Blood Received + Thank You) ───────
+export function useFulfillBloodRequest() {
+  const { actor } = useDeviceActor();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (params: {
+      requestId: bigint;
+      thankYouMessage: string;
+    }) => {
+      if (!actor) throw new Error("Not connected to backend");
+      return await actor.fulfillBloodRequest(
+        params.requestId,
+        params.thankYouMessage,
+      );
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["bloodRequests"] });
+      qc.invalidateQueries({ queryKey: ["globalNotifications"] });
+    },
+  });
+}
+
+// ─── Global Notifications (backend, visible to all users) ─────
+export function useGlobalNotifications() {
+  const { actor, isFetching } = useDeviceActor();
+  return useQuery({
+    queryKey: ["globalNotifications"],
+    queryFn: async () => {
+      if (!actor) return [];
+      try {
+        return await actor.getGlobalNotifications();
+      } catch {
+        return [];
+      }
+    },
+    enabled: !!actor && !isFetching,
+    refetchInterval: 30000,
+    retry: 2,
+    retryDelay: 1000,
+  });
+}
+
+// ─── Delete Account ───────────────────────────────────────────
+export function useDeleteAccount() {
+  const { actor } = useDeviceActor();
+  return useMutation({
+    mutationFn: async () => {
+      if (!actor) throw new Error("Not connected to backend");
+      return await actor.deleteAccount();
     },
   });
 }

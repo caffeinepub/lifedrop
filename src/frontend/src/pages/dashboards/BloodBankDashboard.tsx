@@ -24,6 +24,7 @@ import {
 import { useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { CampPosterDialog } from "../../components/CampPosterDialog";
+import { DeleteAccountSection } from "../../components/DeleteAccountSection";
 import { PhoneInput, extractPhoneDigits } from "../../components/PhoneInput";
 import { type CampAnnouncement, useApp } from "../../contexts/AppContext";
 
@@ -889,6 +890,7 @@ export function BloodBankDashboard() {
           if (!open) setPosterCamp(null);
         }}
       />
+      <DeleteAccountSection />
     </main>
   );
 }

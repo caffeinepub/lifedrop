@@ -69,14 +69,17 @@ export const User = IDL.Record({
 export const BloodRequest = IDL.Record({
   'id' : IDL.Nat,
   'urgencyLevel' : UrgencyLevel,
+  'fulfilled' : IDL.Bool,
   'city' : IDL.Text,
   'createdAt' : IDL.Int,
   'bloodGroup' : BloodGroup,
   'patientName' : IDL.Text,
+  'fulfilledBy' : IDL.Opt(IDL.Principal),
   'contactNumber' : IDL.Text,
   'hospitalName' : IDL.Text,
   'requesterId' : IDL.Principal,
   'quantityMl' : IDL.Nat,
+  'thankYouMessage' : IDL.Opt(IDL.Text),
 });
 export const DonorProfile = IDL.Record({
   'userId' : IDL.Principal,
@@ -93,6 +96,14 @@ export const UserProfile = IDL.Record({
   'bloodGroup' : IDL.Opt(BloodGroup),
   'phone' : IDL.Text,
 });
+export const Notification = IDL.Record({
+  'id' : IDL.Nat,
+  'title' : IDL.Text,
+  'bloodRequestId' : IDL.Opt(IDL.Nat),
+  'createdBy' : IDL.Principal,
+  'message' : IDL.Text,
+  'timestamp' : IDL.Int,
+});
 export const PublicUserEntry = IDL.Record({
   'city' : IDL.Text,
   'name' : IDL.Text,
@@ -102,10 +113,8 @@ export const PublicUserEntry = IDL.Record({
 
 export const idlService = IDL.Service({
   '_initializeAccessControlWithSecret' : IDL.Func([IDL.Text], [], []),
-  'acceptBloodRequest' : IDL.Func([IDL.Nat], [IDL.Bool], []),
   'approveHospital' : IDL.Func([IDL.Principal], [IDL.Bool], []),
   'assignCallerUserRole' : IDL.Func([IDL.Principal, UserRole], [], []),
-  'completeBloodRequest' : IDL.Func([IDL.Nat], [IDL.Bool], []),
   'createBloodRequest' : IDL.Func(
       [
         IDL.Text,
@@ -119,7 +128,9 @@ export const idlService = IDL.Service({
       [IDL.Nat],
       [],
     ),
+  'deleteAccount' : IDL.Func([], [IDL.Bool], []),
   'deleteBloodRequest' : IDL.Func([IDL.Nat], [IDL.Bool], []),
+  'fulfillBloodRequest' : IDL.Func([IDL.Nat, IDL.Text], [IDL.Bool], []),
   'getAllDonorsList' : IDL.Func([], [IDL.Vec(DonorPublicInfo)], ['query']),
   'getAllHospitals' : IDL.Func([], [IDL.Vec(HospitalProfile)], ['query']),
   'getAllUsers' : IDL.Func([], [IDL.Vec(User)], ['query']),
@@ -132,6 +143,7 @@ export const idlService = IDL.Service({
       [IDL.Opt(DonorProfile)],
       ['query'],
     ),
+  'getGlobalNotifications' : IDL.Func([], [IDL.Vec(Notification)], ['query']),
   'getPublicUserList' : IDL.Func([], [IDL.Vec(PublicUserEntry)], ['query']),
   'getRoleCount' : IDL.Func([Role], [IDL.Nat], ['query']),
   'getTotalUsers' : IDL.Func([], [IDL.Nat], ['query']),
@@ -230,14 +242,17 @@ export const idlFactory = ({ IDL }) => {
   const BloodRequest = IDL.Record({
     'id' : IDL.Nat,
     'urgencyLevel' : UrgencyLevel,
+    'fulfilled' : IDL.Bool,
     'city' : IDL.Text,
     'createdAt' : IDL.Int,
     'bloodGroup' : BloodGroup,
     'patientName' : IDL.Text,
+    'fulfilledBy' : IDL.Opt(IDL.Principal),
     'contactNumber' : IDL.Text,
     'hospitalName' : IDL.Text,
     'requesterId' : IDL.Principal,
     'quantityMl' : IDL.Nat,
+    'thankYouMessage' : IDL.Opt(IDL.Text),
   });
   const DonorProfile = IDL.Record({
     'userId' : IDL.Principal,
@@ -254,6 +269,14 @@ export const idlFactory = ({ IDL }) => {
     'bloodGroup' : IDL.Opt(BloodGroup),
     'phone' : IDL.Text,
   });
+  const Notification = IDL.Record({
+    'id' : IDL.Nat,
+    'title' : IDL.Text,
+    'bloodRequestId' : IDL.Opt(IDL.Nat),
+    'createdBy' : IDL.Principal,
+    'message' : IDL.Text,
+    'timestamp' : IDL.Int,
+  });
   const PublicUserEntry = IDL.Record({
     'city' : IDL.Text,
     'name' : IDL.Text,
@@ -263,10 +286,8 @@ export const idlFactory = ({ IDL }) => {
   
   return IDL.Service({
     '_initializeAccessControlWithSecret' : IDL.Func([IDL.Text], [], []),
-    'acceptBloodRequest' : IDL.Func([IDL.Nat], [IDL.Bool], []),
     'approveHospital' : IDL.Func([IDL.Principal], [IDL.Bool], []),
     'assignCallerUserRole' : IDL.Func([IDL.Principal, UserRole], [], []),
-    'completeBloodRequest' : IDL.Func([IDL.Nat], [IDL.Bool], []),
     'createBloodRequest' : IDL.Func(
         [
           IDL.Text,
@@ -280,7 +301,9 @@ export const idlFactory = ({ IDL }) => {
         [IDL.Nat],
         [],
       ),
+    'deleteAccount' : IDL.Func([], [IDL.Bool], []),
     'deleteBloodRequest' : IDL.Func([IDL.Nat], [IDL.Bool], []),
+    'fulfillBloodRequest' : IDL.Func([IDL.Nat, IDL.Text], [IDL.Bool], []),
     'getAllDonorsList' : IDL.Func([], [IDL.Vec(DonorPublicInfo)], ['query']),
     'getAllHospitals' : IDL.Func([], [IDL.Vec(HospitalProfile)], ['query']),
     'getAllUsers' : IDL.Func([], [IDL.Vec(User)], ['query']),
@@ -293,6 +316,7 @@ export const idlFactory = ({ IDL }) => {
         [IDL.Opt(DonorProfile)],
         ['query'],
       ),
+    'getGlobalNotifications' : IDL.Func([], [IDL.Vec(Notification)], ['query']),
     'getPublicUserList' : IDL.Func([], [IDL.Vec(PublicUserEntry)], ['query']),
     'getRoleCount' : IDL.Func([Role], [IDL.Nat], ['query']),
     'getTotalUsers' : IDL.Func([], [IDL.Nat], ['query']),

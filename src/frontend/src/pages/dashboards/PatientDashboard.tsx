@@ -19,6 +19,7 @@ import {
 import { useState } from "react";
 import { toast } from "sonner";
 import { BloodGroup, UrgencyLevel } from "../../backend.d";
+import { DeleteAccountSection } from "../../components/DeleteAccountSection";
 import { useApp } from "../../contexts/AppContext";
 
 import {
@@ -396,6 +397,7 @@ export function PatientDashboard() {
           )}
         </div>
       </div>
+      <DeleteAccountSection />
     </main>
   );
 }

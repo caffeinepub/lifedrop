@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
+import { CardPulseDecor } from "../components/CardPulseDecor";
 
 const bloodGroupColors: Record<string, string> = {
   "A+": "oklch(0.62 0.22 25)",
@@ -437,6 +438,7 @@ export function DonorIdPage() {
           Share
         </Button>
       </div>
+      <CardPulseDecor />
     </main>
   );
 }

@@ -83,7 +83,10 @@ export function CampsPage() {
   }
 
   return (
-    <main className="container mx-auto px-4 py-6" data-ocid="camps.page">
+    <main
+      className="container mx-auto px-4 py-6 overflow-x-hidden"
+      data-ocid="camps.page"
+    >
       {/* Header */}
       <div className="text-center mb-6">
         <div
@@ -363,25 +366,16 @@ export function CampsPage() {
       />
 
       {/* ─── Decorative animations ─────────────────────── */}
-      <div className="container mx-auto px-4 py-10 max-w-5xl">
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "1fr 1fr",
-            gap: "32px",
-            alignItems: "center",
-            justifyItems: "center",
-          }}
-        >
-          <HeartbeatDecor width={280} height={180} />
-          <div
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              gap: 14,
-            }}
-          >
+      <div className="w-full px-4 py-10 max-w-5xl mx-auto overflow-x-hidden">
+        {/* Responsive grid: single column on mobile, two columns on md+ */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center justify-items-center">
+          {/* HeartbeatDecor: constrained width on mobile so it doesn't overflow */}
+          <div className="w-full flex justify-center">
+            <HeartbeatDecor width={280} height={180} />
+          </div>
+
+          {/* Camp Schedule list: full width on mobile, centered items */}
+          <div className="flex flex-col items-center gap-3.5 w-full">
             <div
               style={{
                 color: "oklch(0.65 0.26 22)",
@@ -402,16 +396,13 @@ export function CampsPage() {
             ].map((item) => (
               <div
                 key={item.text}
+                className="flex items-center gap-2.5 w-full"
                 style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 10,
                   padding: "8px 16px",
                   borderRadius: 10,
                   background: "oklch(0.14 0.02 22)",
                   border: "1px solid oklch(0.62 0.26 22 / 0.2)",
-                  width: "100%",
-                  maxWidth: 240,
+                  maxWidth: 280,
                 }}
               >
                 <span style={{ fontSize: 16 }}>{item.icon}</span>

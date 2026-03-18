@@ -20,14 +20,25 @@ export interface DonorPublicInfo {
 export interface BloodRequest {
     id: bigint;
     urgencyLevel: UrgencyLevel;
+    fulfilled: boolean;
     city: string;
     createdAt: bigint;
     bloodGroup: BloodGroup;
     patientName: string;
+    fulfilledBy?: Principal;
     contactNumber: string;
     hospitalName: string;
     requesterId: Principal;
     quantityMl: bigint;
+    thankYouMessage?: string;
+}
+export interface Notification {
+    id: bigint;
+    title: string;
+    bloodRequestId?: bigint;
+    createdBy: Principal;
+    message: string;
+    timestamp: bigint;
 }
 export interface User {
     id: Principal;
@@ -99,12 +110,12 @@ export enum UserRole {
     guest = "guest"
 }
 export interface backendInterface {
-    acceptBloodRequest(requestId: bigint): Promise<boolean>;
     approveHospital(hospitalId: Principal): Promise<boolean>;
     assignCallerUserRole(user: Principal, role: UserRole): Promise<void>;
-    completeBloodRequest(requestId: bigint): Promise<boolean>;
     createBloodRequest(patientName: string, bloodGroup: BloodGroup, quantityMl: bigint, hospitalName: string, city: string, urgency: UrgencyLevel, contact: string): Promise<bigint>;
+    deleteAccount(): Promise<boolean>;
     deleteBloodRequest(requestId: bigint): Promise<boolean>;
+    fulfillBloodRequest(requestId: bigint, thankYouMessage: string): Promise<boolean>;
     getAllDonorsList(): Promise<Array<DonorPublicInfo>>;
     getAllHospitals(): Promise<Array<HospitalProfile>>;
     getAllUsers(): Promise<Array<User>>;
@@ -113,6 +124,7 @@ export interface backendInterface {
     getCallerUserProfile(): Promise<UserProfile | null>;
     getCallerUserRole(): Promise<UserRole>;
     getDonorProfile(userId: Principal): Promise<DonorProfile | null>;
+    getGlobalNotifications(): Promise<Array<Notification>>;
     getPublicUserList(): Promise<Array<PublicUserEntry>>;
     getRoleCount(role: Role): Promise<bigint>;
     getTotalUsers(): Promise<bigint>;

@@ -10,6 +10,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
+import { Link } from "@tanstack/react-router";
 import {
   CheckCircle,
   Droplets,
@@ -29,6 +30,7 @@ import type { DonorPublicInfo } from "../backend.d";
 import { BloodGroup } from "../backend.d";
 import { BloodFactTicker } from "../components/BloodFactTicker";
 import { DonorRadarDecor } from "../components/DonorRadarDecor";
+import { useApp } from "../contexts/AppContext";
 import { useDeviceActor } from "../hooks/useDeviceActor";
 import { useAllDonorsList } from "../hooks/useQueries";
 
@@ -282,6 +284,7 @@ function DonorCard({
 }
 
 export function SearchPage() {
+  const { userProfile } = useApp();
   const [bloodGroup, setBloodGroup] = useState("all");
   const [city, setCity] = useState("");
   const [availableOnly, setAvailableOnly] = useState(false);
@@ -307,6 +310,42 @@ export function SearchPage() {
 
   const hasActiveFilters =
     bloodGroup !== "all" || city.trim() !== "" || availableOnly;
+
+  // Role guard — after all hooks
+  const restrictedRoles = ["donor", "patient", "volunteer"];
+  const isRestricted =
+    userProfile && restrictedRoles.includes(userProfile.role);
+
+  if (isRestricted) {
+    return (
+      <main className="container mx-auto px-4 py-20 flex flex-col items-center justify-center text-center min-h-[60vh]">
+        <div className="text-6xl mb-6">🔒</div>
+        <h1
+          className="font-display text-3xl font-black mb-4"
+          style={{ color: "oklch(var(--neon-red))" }}
+        >
+          Access Restricted
+        </h1>
+        <p className="text-muted-foreground max-w-md mb-6 text-lg">
+          Donor search is available only for Hospitals, Blood Banks, and NGOs.
+          If you need blood urgently, post an Emergency Blood Request —
+          hospitals and NGOs will coordinate for you.
+        </p>
+        <Link to="/request">
+          <button
+            type="button"
+            className="px-6 py-3 rounded-xl font-bold text-white transition-all animate-pulse-glow"
+            style={{
+              background: "oklch(var(--neon-red))",
+              boxShadow: "0 0 20px oklch(var(--neon-red) / 0.5)",
+            }}
+          >
+            Post Emergency Request
+          </button>
+        </Link>
+      </main>
+    );
+  }
 
   const handleClearFilters = () => {
     setBloodGroup("all");

@@ -4,6 +4,7 @@ import { Switch } from "@/components/ui/switch";
 import { AlertTriangle, Calendar, CheckCircle, Users } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
+import { DeleteAccountSection } from "../../components/DeleteAccountSection";
 import { useApp } from "../../contexts/AppContext";
 import { useUpdateDonorAvailability } from "../../hooks/useQueries";
 
@@ -304,6 +305,7 @@ export function VolunteerDashboard() {
           )}
         </div>
       </div>
+      <DeleteAccountSection />
     </main>
   );
 }

@@ -21,14 +21,17 @@ export type BloodGroup = { 'B_Negative' : null } |
 export interface BloodRequest {
   'id' : bigint,
   'urgencyLevel' : UrgencyLevel,
+  'fulfilled' : boolean,
   'city' : string,
   'createdAt' : bigint,
   'bloodGroup' : BloodGroup,
   'patientName' : string,
+  'fulfilledBy' : [] | [Principal],
   'contactNumber' : string,
   'hospitalName' : string,
   'requesterId' : Principal,
   'quantityMl' : bigint,
+  'thankYouMessage' : [] | [string],
 }
 export interface DonorProfile {
   'userId' : Principal,
@@ -53,6 +56,14 @@ export interface HospitalProfile {
   'address' : string,
   'licenseNumber' : string,
   'hospitalName' : string,
+}
+export interface Notification {
+  'id' : bigint,
+  'title' : string,
+  'bloodRequestId' : [] | [bigint],
+  'createdBy' : Principal,
+  'message' : string,
+  'timestamp' : bigint,
 }
 export interface PublicUserEntry {
   'city' : string,
@@ -95,15 +106,15 @@ export type UserRole = { 'admin' : null } |
   { 'guest' : null };
 export interface _SERVICE {
   '_initializeAccessControlWithSecret' : ActorMethod<[string], undefined>,
-  'acceptBloodRequest' : ActorMethod<[bigint], boolean>,
   'approveHospital' : ActorMethod<[Principal], boolean>,
   'assignCallerUserRole' : ActorMethod<[Principal, UserRole], undefined>,
-  'completeBloodRequest' : ActorMethod<[bigint], boolean>,
   'createBloodRequest' : ActorMethod<
     [string, BloodGroup, bigint, string, string, UrgencyLevel, string],
     bigint
   >,
+  'deleteAccount' : ActorMethod<[], boolean>,
   'deleteBloodRequest' : ActorMethod<[bigint], boolean>,
+  'fulfillBloodRequest' : ActorMethod<[bigint, string], boolean>,
   'getAllDonorsList' : ActorMethod<[], Array<DonorPublicInfo>>,
   'getAllHospitals' : ActorMethod<[], Array<HospitalProfile>>,
   'getAllUsers' : ActorMethod<[], Array<User>>,
@@ -112,6 +123,7 @@ export interface _SERVICE {
   'getCallerUserProfile' : ActorMethod<[], [] | [UserProfile]>,
   'getCallerUserRole' : ActorMethod<[], UserRole>,
   'getDonorProfile' : ActorMethod<[Principal], [] | [DonorProfile]>,
+  'getGlobalNotifications' : ActorMethod<[], Array<Notification>>,
   'getPublicUserList' : ActorMethod<[], Array<PublicUserEntry>>,
   'getRoleCount' : ActorMethod<[Role], bigint>,
   'getTotalUsers' : ActorMethod<[], bigint>,

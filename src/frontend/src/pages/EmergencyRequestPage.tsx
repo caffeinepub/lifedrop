@@ -16,6 +16,7 @@ import { toast } from "sonner";
 import { BloodGroup, UrgencyLevel } from "../backend.d";
 import { PhoneInput, extractPhoneDigits } from "../components/PhoneInput";
 
+import { SOSBeaconDecor } from "../components/SOSBeaconDecor";
 import { useCreateBloodRequest } from "../hooks/useQueries";
 
 const bloodGroupOptions = [
@@ -102,7 +103,9 @@ export function EmergencyRequestPage() {
       const msg = err instanceof Error ? err.message : String(err);
       const lower = msg.toLowerCase();
       if (lower.includes("stopped") || lower.includes("canister")) {
-        toast.error("Initializing secure connection... please wait.");
+        toast.error(
+          "Backend temporarily unavailable. Please try again in a moment.",
+        );
       } else if (lower.includes("network") || lower.includes("fetch")) {
         toast.error(
           "Network error. Please check your connection and try again.",
@@ -440,6 +443,7 @@ export function EmergencyRequestPage() {
           )}
         </Button>
       </form>
+      <SOSBeaconDecor />
     </main>
   );
 }

@@ -11,6 +11,7 @@ import {
 import { Building2, CheckCircle, Clock, Minus, Plus } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
+import { DeleteAccountSection } from "../../components/DeleteAccountSection";
 import { useApp } from "../../contexts/AppContext";
 
 type BloodInventory = {
@@ -470,6 +471,7 @@ export function HospitalDashboard() {
           </div>
         </div>
       </div>
+      <DeleteAccountSection />
     </main>
   );
 }

@@ -22,9 +22,15 @@ export function Navbar() {
   const routerState = useRouterState();
   const pathname = routerState.location.pathname;
 
+  const restrictedFromSearch = ["donor", "patient", "volunteer"];
+  const canSearchDonors =
+    !userProfile || !restrictedFromSearch.includes(userProfile.role);
+
   const navLinks = [
     { href: "/", label: t("home") },
-    { href: "/search", label: t("search_donors") },
+    ...(canSearchDonors
+      ? [{ href: "/search", label: t("search_donors") }]
+      : []),
     { href: "/blood-requests", label: t("blood_requests") },
     { href: "/camps", label: t("camps") },
     { href: "/request", label: t("emergency") },

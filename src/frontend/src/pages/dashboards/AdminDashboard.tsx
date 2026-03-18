@@ -12,6 +12,7 @@ import {
 import { useState } from "react";
 import { toast } from "sonner";
 import { Role } from "../../backend.d";
+import { DeleteAccountSection } from "../../components/DeleteAccountSection";
 import {
   useAllHospitals,
   useAllUsers,
@@ -599,6 +600,7 @@ export function AdminDashboard() {
           )}
         </TabsContent>
       </Tabs>
+      <DeleteAccountSection />
     </main>
   );
 }

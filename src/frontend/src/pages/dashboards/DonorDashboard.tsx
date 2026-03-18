@@ -19,6 +19,7 @@ import {
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { BloodGroup, UrgencyLevel } from "../../backend.d";
+import { DeleteAccountSection } from "../../components/DeleteAccountSection";
 import { useApp } from "../../contexts/AppContext";
 
 import {
@@ -773,6 +774,7 @@ export function DonorDashboard() {
           </div>
         </div>
       </div>
+      <DeleteAccountSection />
     </main>
   );
 }

@@ -17,9 +17,9 @@ interface AudioSession {
 function startAudio(session: AudioSession) {
   const { ctx, masterGain } = session;
 
+  // Start at full volume immediately — no delay, no ramp
   masterGain.gain.cancelScheduledValues(ctx.currentTime);
-  masterGain.gain.setValueAtTime(0, ctx.currentTime);
-  masterGain.gain.linearRampToValueAtTime(0.55, ctx.currentTime + 3);
+  masterGain.gain.setValueAtTime(0.55, ctx.currentTime);
 
   const convolver = ctx.createConvolver();
   const reverbLen = ctx.sampleRate * 3;
@@ -116,13 +116,11 @@ function startAudio(session: AudioSession) {
 
 export function MusicPlayer() {
   const [isPlaying, setIsPlaying] = useState(false);
-  // Use ref so toggle always has fresh state without stale closure
   const isPlayingRef = useRef(false);
   const sessionRef = useRef<AudioSession | null>(null);
   const busyRef = useRef(false);
 
   const toggle = async () => {
-    // Prevent double-taps from racing
     if (busyRef.current) return;
     busyRef.current = true;
 
@@ -133,8 +131,7 @@ export function MusicPlayer() {
           .webkitAudioContext;
 
       if (!isPlayingRef.current) {
-        // --- START ---
-        // Close any lingering session first
+        // Close any lingering session
         if (sessionRef.current) {
           try { await sessionRef.current.ctx.close(); } catch {}
           sessionRef.current = null;
@@ -149,23 +146,23 @@ export function MusicPlayer() {
 
         if (ctx.state === "suspended") await ctx.resume();
 
+        // Start audio immediately — sound plays right away
         startAudio(session);
 
         isPlayingRef.current = true;
         setIsPlaying(true);
       } else {
-        // --- STOP ---
+        // STOP — fade out quickly then close
         const session = sessionRef.current;
         if (session) {
           if (session.chimeTimeout) clearTimeout(session.chimeTimeout);
-          // Fade out then close
           const { masterGain, ctx } = session;
           masterGain.gain.cancelScheduledValues(ctx.currentTime);
           masterGain.gain.setValueAtTime(masterGain.gain.value, ctx.currentTime);
-          masterGain.gain.linearRampToValueAtTime(0, ctx.currentTime + 1);
+          masterGain.gain.linearRampToValueAtTime(0, ctx.currentTime + 0.3);
           setTimeout(async () => {
             try { await ctx.close(); } catch {}
-          }, 1100);
+          }, 400);
           sessionRef.current = null;
         }
 

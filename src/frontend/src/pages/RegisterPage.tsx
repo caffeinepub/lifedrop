@@ -29,6 +29,7 @@ import { AnimatePresence, motion } from "motion/react";
 import { useRef, useState } from "react";
 import { toast } from "sonner";
 import { BloodGroup, Role } from "../backend.d";
+import { HelixDecor } from "../components/HelixDecor";
 import { addRegisteredUser, useApp } from "../contexts/AppContext";
 import { useDeviceActor } from "../hooks/useDeviceActor";
 
@@ -1870,6 +1871,7 @@ export function RegisterPage() {
           secure
         </motion.p>
       </div>
+      <HelixDecor />
     </main>
   );
 }
