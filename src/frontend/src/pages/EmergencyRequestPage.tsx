@@ -97,8 +97,16 @@ export function EmergencyRequestPage() {
         urgency: form.urgency as UrgencyLevel,
         contact: form.contact,
       });
+      // Backend returns 0 only for truly anonymous callers (no device identity)
+      if (id === 0n || id === BigInt(0)) {
+        toast.error(
+          "Could not submit the request. Please refresh and try again.",
+          { duration: 6000 },
+        );
+        return;
+      }
       setSuccessId(id);
-      toast.success("Emergency blood request submitted!");
+      toast.success("Blood request posted successfully!");
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       const lower = msg.toLowerCase();
@@ -141,11 +149,12 @@ export function EmergencyRequestPage() {
             />
           </div>
           <h2 className="font-display text-2xl font-black mb-2">
-            Request Submitted!
+            Request Posted!
           </h2>
           <p className="text-muted-foreground mb-4">
-            Your emergency blood request has been submitted. Nearby donors and
-            hospitals have been notified.
+            Your blood request is now live. Nearby donors and hospitals have
+            been notified. You can delete or mark it as received from the Blood
+            Requests page.
           </p>
           <div
             className="p-4 rounded-xl mb-6 font-mono text-sm"
@@ -177,13 +186,13 @@ export function EmergencyRequestPage() {
             </Button>
             <Button
               className="flex-1"
-              onClick={() => void navigate({ to: "/search" })}
+              onClick={() => void navigate({ to: "/blood-requests" })}
               style={{
                 backgroundColor: "oklch(var(--neon-red))",
                 color: "white",
               }}
             >
-              Find Donors
+              View All Requests
             </Button>
           </div>
         </div>
@@ -204,13 +213,14 @@ export function EmergencyRequestPage() {
           }}
         >
           <AlertTriangle className="h-4 w-4 animate-heartbeat" />
-          EMERGENCY BLOOD REQUEST
+          BLOOD REQUEST
         </div>
         <h1 className="font-display text-4xl font-black mb-3">
-          Request Blood Now
+          Post a Blood Request
         </h1>
         <p className="text-muted-foreground">
-          Fill the form below. Nearby donors will be alerted instantly.
+          Anyone can post — no registration needed. Fill the form and nearby
+          donors will be alerted instantly.
         </p>
       </div>
 
@@ -301,7 +311,11 @@ export function EmergencyRequestPage() {
                       form.urgency === level
                         ? config.bg
                         : "oklch(var(--secondary))",
-                    border: `1px solid ${form.urgency === level ? config.border : "oklch(var(--border))"}`,
+                    border: `1px solid ${
+                      form.urgency === level
+                        ? config.border
+                        : "oklch(var(--border))"
+                    }`,
                     outline: `2px solid ${config.color}`,
                   }}
                   data-ocid={`request.urgency.${level}.toggle`}
@@ -388,7 +402,10 @@ export function EmergencyRequestPage() {
               backgroundColor:
                 urgencyConfig[form.urgency as UrgencyLevel]?.bg ||
                 "oklch(var(--secondary))",
-              border: `1px solid ${urgencyConfig[form.urgency as UrgencyLevel]?.border || "oklch(var(--border))"}`,
+              border: `1px solid ${
+                urgencyConfig[form.urgency as UrgencyLevel]?.border ||
+                "oklch(var(--border))"
+              }`,
             }}
           >
             <Clock
@@ -433,12 +450,12 @@ export function EmergencyRequestPage() {
           {createRequest.isPending ? (
             <>
               <Loader2 className="h-5 w-5 mr-2 animate-spin" />
-              Submitting Request...
+              Posting Request...
             </>
           ) : (
             <>
               <AlertTriangle className="h-5 w-5 mr-2" />
-              Submit Emergency Request
+              Post Blood Request
             </>
           )}
         </Button>

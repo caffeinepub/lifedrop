@@ -351,6 +351,13 @@ function useRegisterLogic(role: Role) {
         : undefined;
 
       // Only call addRegisteredUser on true first-time registration
+      // Store registration timestamp for notification filtering
+      localStorage.setItem("lifedrop_registered_at", Date.now().toString());
+      localStorage.setItem(
+        "lifedrop_user_role",
+        typeof role === "string" ? role : (Object.keys(role)[0] ?? ""),
+      );
+
       addRegisteredUser({
         name: data.name,
         role,

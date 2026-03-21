@@ -113,7 +113,8 @@ export interface _SERVICE {
     bigint
   >,
   'deleteAccount' : ActorMethod<[], boolean>,
-  'deleteBloodRequest' : ActorMethod<[bigint], boolean>,
+  'deleteBloodRequest' : ActorMethod<[bigint], boolean>
+  'deleteGlobalNotification' : ActorMethod<[bigint], boolean>,
   'fulfillBloodRequest' : ActorMethod<[bigint, string], boolean>,
   'getAllDonorsList' : ActorMethod<[], Array<DonorPublicInfo>>,
   'getAllHospitals' : ActorMethod<[], Array<HospitalProfile>>,

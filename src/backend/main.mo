@@ -2,18 +2,12 @@ import Int "mo:core/Int";
 import Time "mo:core/Time";
 import Text "mo:core/Text";
 import Nat "mo:core/Nat";
-import Order "mo:core/Order";
-import Array "mo:core/Array";
-import Iter "mo:core/Iter";
-import List "mo:core/List";
 import Map "mo:core/Map";
 import Principal "mo:core/Principal";
-import Migration "migration";
+
 import MixinAuthorization "authorization/MixinAuthorization";
 import AccessControl "authorization/access-control";
 
-// Enable persistent actors and data migration using with clause
-(with migration = Migration.run)
 actor {
   let accessControlState = AccessControl.initState();
   include MixinAuthorization(accessControlState);
@@ -132,27 +126,47 @@ actor {
   let hospitalProfiles = Map.empty<Principal, HospitalProfile>();
   var bloodRequests = Map.empty<Nat, BloodRequest>();
   let notifications = Map.empty<Nat, Notification>();
+  let bloodInventoryMap = Map.empty<Principal, [(BloodGroup, Nat)]>();
+  // Kept for stable variable compatibility with previous canister version
   let deletedRequestIds = Map.empty<Nat, Bool>();
 
   var nextRequestId = 0;
   var nextNotificationId = 0;
 
-  module DonorProfile {
-    public func compare(dp1 : DonorProfile, dp2 : DonorProfile) : Order.Order {
-      dp1.userId.compare(dp2.userId);
-    };
-  };
-
-  module User {
-    public func compare(user1 : User, user2 : User) : Order.Order {
-      Text.compare(user1.name, user2.name);
-    };
+  // -------------------------------------------------------
+  // Helpers
+  // -------------------------------------------------------
+  func isRegisteredUser(caller : Principal) : Bool {
+    if (caller.isAnonymous()) { return false };
+    users.containsKey(caller);
   };
 
   func isAppAdmin(caller : Principal) : Bool {
+    if (caller.isAnonymous()) { return false };
     switch (users.get(caller)) {
       case (?user) { user.role == #admin };
       case (null) { false };
+    };
+  };
+
+  func getUserRole(caller : Principal) : ?Role {
+    switch (users.get(caller)) {
+      case (?user) { ?user.role };
+      case (null) { null };
+    };
+  };
+
+  // Anyone who posted (same device principal) can delete their own request.
+  // Hospital, Blood Bank, NGO, Admin can delete any request.
+  func canDeleteBloodRequest(caller : Principal, req : BloodRequest) : Bool {
+    if (caller.isAnonymous()) { return false };
+    if (req.requesterId == caller) { return true };
+    switch (getUserRole(caller)) {
+      case (?#hospital) { true };
+      case (?#bloodBank) { true };
+      case (?#ngo) { true };
+      case (?#admin) { true };
+      case (_) { false };
     };
   };
 
@@ -169,6 +183,18 @@ actor {
     };
   };
 
+  func urgencyToText(u : UrgencyLevel) : Text {
+    switch (u) {
+      case (#low) { "Low" };
+      case (#medium) { "Medium" };
+      case (#high) { "High" };
+      case (#critical) { "Critical" };
+    };
+  };
+
+  // -------------------------------------------------------
+  // Register user
+  // -------------------------------------------------------
   public shared ({ caller }) func registerUser(
     name : Text,
     email : Text,
@@ -177,6 +203,7 @@ actor {
     city : Text,
     bloodGroup : ?BloodGroup,
   ) : async Principal {
+    if (caller.isAnonymous()) { return caller };
     if (users.containsKey(caller)) { return caller };
 
     let newUser : User = {
@@ -234,45 +261,29 @@ actor {
     caller;
   };
 
-  public query ({ caller }) func getAllUsers() : async [User] {
-    if (not (AccessControl.isAdmin(accessControlState, caller))) {
-      Runtime.trap("Unauthorized: Only admins can view all users");
-    };
-    users.values().toArray();
-  };
-
+  // -------------------------------------------------------
+  // Profile queries
+  // -------------------------------------------------------
   public query ({ caller }) func getCallerUserProfile() : async ?UserProfile {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can view profiles");
-    };
+    if (caller.isAnonymous()) { return null };
     userProfiles.get(caller);
   };
 
   public query ({ caller }) func getCallerDonorProfile() : async ?DonorProfile {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can view donor profiles");
-    };
+    if (caller.isAnonymous()) { return null };
     donorProfiles.get(caller);
   };
 
   public query ({ caller }) func getDonorProfile(userId : Principal) : async ?DonorProfile {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can view donor profiles");
-    };
     donorProfiles.get(userId);
   };
 
   public query ({ caller }) func getUserProfile(user : Principal) : async ?UserProfile {
-    if (caller != user and not AccessControl.isAdmin(accessControlState, caller)) {
-      Runtime.trap("Unauthorized: Can only view your own profile");
-    };
     userProfiles.get(user);
   };
 
   public shared ({ caller }) func saveCallerUserProfile(profile : UserProfile) : async () {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can save profiles");
-    };
+    if (not isRegisteredUser(caller)) { return };
     switch (users.get(caller)) {
       case (?existingUser) {
         userProfiles.add(caller, profile);
@@ -293,10 +304,16 @@ actor {
     };
   };
 
+  // -------------------------------------------------------
+  // Admin
+  // -------------------------------------------------------
+  public query ({ caller }) func getAllUsers() : async [User] {
+    if (not isAppAdmin(caller)) { return [] };
+    users.values().toArray();
+  };
+
   public shared ({ caller }) func updateUser(user : User) : async () {
-    if (not (AccessControl.isAdmin(accessControlState, caller))) {
-      Runtime.trap("Unauthorized: Only admins can update users");
-    };
+    if (not isAppAdmin(caller)) { return };
     users.add(user.id, user);
     let updatedProfile : UserProfile = {
       name = user.name;
@@ -309,38 +326,56 @@ actor {
     userProfiles.add(user.id, updatedProfile);
   };
 
+  public shared ({ caller }) func approveHospital(hospitalId : Principal) : async Bool {
+    if (not isAppAdmin(caller)) { return false };
+    switch (hospitalProfiles.get(hospitalId)) {
+      case (?profile) {
+        let updated : HospitalProfile = {
+          userId = profile.userId;
+          licenseNumber = profile.licenseNumber;
+          hospitalName = profile.hospitalName;
+          address = profile.address;
+          isApproved = true;
+        };
+        hospitalProfiles.add(hospitalId, updated);
+        true;
+      };
+      case (null) { false };
+    };
+  };
+
+  // -------------------------------------------------------
+  // Donor search
+  // -------------------------------------------------------
+  func caseInsensitiveContains(text : Text, search : Text) : Bool {
+    if (search == "") { return true };
+    text.toLower().contains(#text(search.toLower()));
+  };
+
   public query ({ caller }) func searchDonors(
     bloodGroup : ?BloodGroup,
     city : ?Text,
     availableOnly : Bool,
   ) : async [DonorProfile] {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can search donors");
-    };
-    let allDonors = donorProfiles.values().toArray();
-    allDonors.filter(func(donor : DonorProfile) : Bool {
-      let bloodGroupMatch = switch (bloodGroup) {
+    donorProfiles.values().toArray().filter(func(donor : DonorProfile) : Bool {
+      let bgMatch = switch (bloodGroup) {
         case (?bg) { donor.bloodGroup == bg };
         case (null) { true };
       };
-      let availabilityMatch = if (availableOnly) { donor.availability } else { true };
+      let avMatch = if (availableOnly) { donor.availability } else { true };
       let cityMatch = switch (city) {
         case (?c) {
-          switch (users.get(donor.userId)) {
-            case (?user) { user.city == c };
-            case (null) { false };
+          if (c == "") { true } else {
+            switch (users.get(donor.userId)) {
+              case (?u) { caseInsensitiveContains(u.city, c) };
+              case (null) { false };
+            };
           };
         };
         case (null) { true };
       };
-      bloodGroupMatch and availabilityMatch and cityMatch;
+      bgMatch and avMatch and cityMatch;
     });
-  };
-
-  func caseInsensitiveContains(text : Text, search : Text) : Bool {
-    let tLower = text.toLower();
-    let sLower = search.toLower();
-    tLower.contains(#text(sLower));
   };
 
   public query ({ caller }) func searchDonorsPublic(
@@ -349,44 +384,62 @@ actor {
     name : ?Text,
     availableOnly : Bool,
   ) : async [DonorPublicInfo] {
-    // Public search - no authorization required
-    let allDonors = donorProfiles.values().toArray();
-    let filteredDonors = allDonors.filter(func(donor) {
-      let bloodGroupMatch = switch (bloodGroup) {
+    donorProfiles.values().toArray().filter(func(donor) {
+      let bgMatch = switch (bloodGroup) {
         case (?bg) { donor.bloodGroup == bg };
         case (null) { true };
       };
       let cityMatch = switch (city) {
         case (?c) {
           switch (users.get(donor.userId)) {
-            case (?user) { caseInsensitiveContains(user.city, c) };
+            case (?u) { caseInsensitiveContains(u.city, c) };
             case (null) { false };
           };
         };
         case (null) { true };
       };
-      let availabilityMatch = if (availableOnly) { donor.availability } else { true };
+      let avMatch = if (availableOnly) { donor.availability } else { true };
       let nameMatch = switch (name) {
         case (null) { true };
-        case (?searchName) {
-          switch (users.get(donor.userId)) {
-            case (?user) { caseInsensitiveContains(user.name, searchName) };
-            case (null) { false };
+        case (?n) {
+          if (n == "") { true } else {
+            switch (users.get(donor.userId)) {
+              case (?u) { caseInsensitiveContains(u.name, n) };
+              case (null) { false };
+            };
           };
         };
       };
-      bloodGroupMatch and cityMatch and availabilityMatch and nameMatch;
-    });
-    filteredDonors.map(func(donor) {
-      let (name, phone, city) = switch (users.get(donor.userId)) {
-        case (?user) { (user.name, user.phone, user.city) };
-        case (null) { ("", "", "Unknown") };
+      bgMatch and cityMatch and avMatch and nameMatch;
+    }).map(func(donor) {
+      let (uName, uPhone, uCity) = switch (users.get(donor.userId)) {
+        case (?u) { (u.name, u.phone, u.city) };
+        case (null) { ("", "", "") };
       };
       {
         userId = donor.userId;
-        name;
-        phone;
-        city;
+        name = uName;
+        phone = uPhone;
+        city = uCity;
+        bloodGroup = donor.bloodGroup;
+        availability = donor.availability;
+        lastDonationDate = donor.lastDonationDate;
+        totalDonations = donor.totalDonations;
+      };
+    });
+  };
+
+  public query ({ caller }) func getAllDonorsList() : async [DonorPublicInfo] {
+    donorProfiles.values().toArray().map(func(donor) {
+      let (uName, uPhone, uCity) = switch (users.get(donor.userId)) {
+        case (?u) { (u.name, u.phone, u.city) };
+        case (null) { ("", "", "") };
+      };
+      {
+        userId = donor.userId;
+        name = uName;
+        phone = uPhone;
+        city = uCity;
         bloodGroup = donor.bloodGroup;
         availability = donor.availability;
         lastDonationDate = donor.lastDonationDate;
@@ -396,81 +449,83 @@ actor {
   };
 
   public shared ({ caller }) func updateDonorAvailability(available : Bool) : async Bool {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can update donor availability");
-    };
-    switch (users.get(caller)) {
-      case (?user) {
-        switch (user.role) {
-          case (#donor) {
-            switch (donorProfiles.get(caller)) {
-              case (?profile) {
-                let updatedProfile : DonorProfile = {
-                  userId = profile.userId;
-                  bloodGroup = profile.bloodGroup;
-                  availability = available;
-                  lastDonationDate = profile.lastDonationDate;
-                  totalDonations = profile.totalDonations;
-                };
-                donorProfiles.add(caller, updatedProfile);
-                true;
-              };
-              case (null) { false };
-            };
-          };
-          case (_) { false };
+    if (not isRegisteredUser(caller)) { return false };
+    switch (donorProfiles.get(caller)) {
+      case (?profile) {
+        let updated : DonorProfile = {
+          userId = profile.userId;
+          bloodGroup = profile.bloodGroup;
+          availability = available;
+          lastDonationDate = profile.lastDonationDate;
+          totalDonations = profile.totalDonations;
         };
+        donorProfiles.add(caller, updated);
+        true;
       };
       case (null) { false };
     };
   };
 
+  // -------------------------------------------------------
+  // Hospital profile & inventory
+  // -------------------------------------------------------
   public shared ({ caller }) func updateHospitalProfile(
     licenseNumber : Text,
     hospitalName : Text,
     address : Text,
   ) : async Bool {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can update hospital profiles");
-    };
-    switch (users.get(caller)) {
-      case (?user) {
-        switch (user.role) {
-          case (#hospital) {
-            switch (hospitalProfiles.get(caller)) {
-              case (?profile) {
-                let updatedProfile : HospitalProfile = {
-                  userId = profile.userId;
-                  licenseNumber;
-                  hospitalName;
-                  address;
-                  isApproved = profile.isApproved;
-                };
-                hospitalProfiles.add(caller, updatedProfile);
-                true;
-              };
-              case (null) { false };
-            };
-          };
-          case (_) { false };
+    if (not isRegisteredUser(caller)) { return false };
+    switch (hospitalProfiles.get(caller)) {
+      case (?profile) {
+        let updated : HospitalProfile = {
+          userId = profile.userId;
+          licenseNumber;
+          hospitalName;
+          address;
+          isApproved = profile.isApproved;
         };
+        hospitalProfiles.add(caller, updated);
+        true;
       };
       case (null) { false };
     };
   };
 
+  public shared ({ caller }) func updateBloodInventory(inventory : [(BloodGroup, Nat)]) : async Bool {
+    if (not isRegisteredUser(caller)) { return false };
+    bloodInventoryMap.add(caller, inventory);
+    true;
+  };
+
+  public query ({ caller }) func getMyBloodInventory() : async [(BloodGroup, Nat)] {
+    if (caller.isAnonymous()) { return [] };
+    switch (bloodInventoryMap.get(caller)) {
+      case (?inv) { inv };
+      case (null) { [] };
+    };
+  };
+
+  public query ({ caller }) func getMyHospitalProfile() : async ?HospitalProfile {
+    if (caller.isAnonymous()) { return null };
+    hospitalProfiles.get(caller);
+  };
+
+  public query ({ caller }) func getAllHospitals() : async [HospitalProfile] {
+    hospitalProfiles.values().toArray();
+  };
+
+  // -------------------------------------------------------
+  // Public stats
+  // -------------------------------------------------------
   public query ({ caller }) func getTotalUsers() : async Nat {
-    // Public statistics - no authorization required
     users.size();
   };
 
   public query ({ caller }) func getRoleCount(role : Role) : async Nat {
-    // Public statistics - no authorization required
-    users.values().toArray().filter(func(user) { user.role == role }).size();
+    users.values().toArray().filter(func(u) { u.role == role }).size();
   };
 
   public query ({ caller }) func getPublicUserList() : async [PublicUserEntry] {
-    // Public list - no authorization required
     users.values().toArray().map(func(user) {
       {
         name = user.name;
@@ -481,26 +536,11 @@ actor {
     });
   };
 
-  public query ({ caller }) func getAllDonorsList() : async [DonorPublicInfo] {
-    // Public list - no authorization required
-    donorProfiles.values().toArray().map(func(donor) {
-      let (name, phone, city) = switch (users.get(donor.userId)) {
-        case (?user) { (user.name, user.phone, user.city) };
-        case (null) { ("", "", "Unknown") };
-      };
-      {
-        userId = donor.userId;
-        name;
-        phone;
-        city;
-        bloodGroup = donor.bloodGroup;
-        availability = donor.availability;
-        lastDonationDate = donor.lastDonationDate;
-        totalDonations = donor.totalDonations;
-      };
-    });
-  };
-
+  // -------------------------------------------------------
+  // Blood Requests
+  // Anyone with a non-anonymous device identity can post a blood request.
+  // Registration is NOT required — guests, volunteers, NGOs, hospitals, anyone.
+  // -------------------------------------------------------
   public shared ({ caller }) func createBloodRequest(
     patientName : Text,
     bloodGroup : BloodGroup,
@@ -510,14 +550,14 @@ actor {
     urgency : UrgencyLevel,
     contact : Text,
   ) : async Nat {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can create blood requests");
-    };
-    let newRequestId = nextRequestId;
+    // Only block truly anonymous callers (no device identity)
+    if (caller.isAnonymous()) { return 0 };
+
+    let id = nextRequestId;
     nextRequestId += 1;
 
-    let newRequest : BloodRequest = {
-      id = newRequestId;
+    let req : BloodRequest = {
+      id;
       patientName;
       bloodGroup;
       quantityMl;
@@ -531,148 +571,146 @@ actor {
       fulfilledBy = null;
       thankYouMessage = null;
     };
-    bloodRequests.add(newRequestId, newRequest);
+    bloodRequests.add(id, req);
 
-    let notificationId = nextNotificationId;
+    // Broadcast emergency notification to all users
+    let notifId = nextNotificationId;
     nextNotificationId += 1;
-    let notification : Notification = {
-      id = notificationId;
-      title = "Blood Request Created - " # patientName;
-      message = "Blood request for " # bloodGroupToText(bloodGroup) # " needed at " # hospitalName # ", " # city;
+    let notif : Notification = {
+      id = notifId;
+      title = "Emergency Blood Request — " # bloodGroupToText(bloodGroup);
+      message = "Patient: " # patientName # " | Blood: " # bloodGroupToText(bloodGroup) # " | Hospital: " # hospitalName # " | City: " # city # " | Urgency: " # urgencyToText(urgency) # " | Contact: " # contact;
       timestamp = Time.now();
-      bloodRequestId = ?newRequest.id;
+      bloodRequestId = ?id;
       createdBy = caller;
     };
-    notifications.add(notificationId, notification);
+    notifications.add(notifId, notif);
 
-    newRequestId;
+    id + 1; // >0 = success
   };
 
   public query ({ caller }) func getBloodRequests() : async [BloodRequest] {
-    // Public list - no authorization required
     bloodRequests.values().toArray().filter(func(b) { not b.fulfilled });
   };
 
+  // Only the original poster (any device identity) or hospital/NGO/blood bank can fulfill.
   public shared ({ caller }) func fulfillBloodRequest(requestId : Nat, thankYouMessage : Text) : async Bool {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can fulfill blood requests");
-    };
-    switch (users.get(caller)) {
-      case (?user) {
-        switch (user.role) {
-          case (#donor) {
-            switch (bloodRequests.get(requestId)) {
-              case (?request) {
-                if (not request.fulfilled) {
-                  let updatedRequest : BloodRequest = {
-                    id = request.id;
-                    patientName = request.patientName;
-                    bloodGroup = request.bloodGroup;
-                    quantityMl = request.quantityMl;
-                    hospitalName = request.hospitalName;
-                    city = request.city;
-                    urgencyLevel = request.urgencyLevel;
-                    contactNumber = request.contactNumber;
-                    requesterId = request.requesterId;
-                    createdAt = request.createdAt;
-                    fulfilled = true;
-                    fulfilledBy = ?caller;
-                    thankYouMessage = ?thankYouMessage;
-                  };
-                  bloodRequests.add(requestId, updatedRequest);
-
-                  let completedNotificationId = nextNotificationId;
-                  nextNotificationId += 1;
-                  let completionNotification : Notification = {
-                    id = completedNotificationId;
-                    title = "Blood Request Fulfilled - " # request.patientName;
-                    message = "Request completed by donor - " # thankYouMessage;
-                    timestamp = Time.now();
-                    bloodRequestId = ?requestId;
-                    createdBy = caller;
-                  };
-                  notifications.add(completedNotificationId, completionNotification);
-                  return true;
-                } else { return false };
-              };
-              case (null) { false };
-            };
-          };
-          case (_) { Runtime.trap("Unauthorized: Only donors can fulfill blood requests") };
+    if (caller.isAnonymous()) { return false };
+    switch (bloodRequests.get(requestId)) {
+      case (?req) {
+        if (req.requesterId != caller) { return false };
+        if (req.fulfilled) { return false };
+        let updated : BloodRequest = {
+          id = req.id;
+          patientName = req.patientName;
+          bloodGroup = req.bloodGroup;
+          quantityMl = req.quantityMl;
+          hospitalName = req.hospitalName;
+          city = req.city;
+          urgencyLevel = req.urgencyLevel;
+          contactNumber = req.contactNumber;
+          requesterId = req.requesterId;
+          createdAt = req.createdAt;
+          fulfilled = true;
+          fulfilledBy = ?caller;
+          thankYouMessage = ?thankYouMessage;
         };
-      };
-      case (null) { false };
-    };
-  };
+        bloodRequests.add(requestId, updated);
 
-  public shared ({ caller }) func deleteAccount() : async Bool {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can delete their own account");
-    };
-    users.remove(caller);
-    userProfiles.remove(caller);
-    donorProfiles.remove(caller);
-    hospitalProfiles.remove(caller);
-    var deletedRequests = 0;
-    let requestCount = bloodRequests.size();
-    if (requestCount > 0) {
-      let currentRequests = bloodRequests.toArray();
-      for ((id, request) in currentRequests.values()) {
-        if (request.requesterId == caller) {
-          bloodRequests.remove(id);
-          deletedRequests += 1;
+        let notifId = nextNotificationId;
+        nextNotificationId += 1;
+        let notif : Notification = {
+          id = notifId;
+          title = "🩸 Blood Received — Thank You!";
+          message = "Blood received for patient " # req.patientName # "! " # (if (thankYouMessage == "") { "Thank you to all helpers!" } else { thankYouMessage });
+          timestamp = Time.now();
+          bloodRequestId = ?requestId;
+          createdBy = caller;
         };
-      };
-    };
-    deletedRequests > 0;
-  };
-
-  public shared ({ caller }) func deleteBloodRequest(requestId : Nat) : async Bool {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can delete blood requests");
-    };
-    let existing = bloodRequests.get(requestId);
-    switch (existing) {
-      case (?request) {
-        if (request.requesterId == caller) {
-          bloodRequests.remove(requestId);
-          return true;
-        } else {
-          Runtime.trap("Unauthorized: Can only delete your own blood requests");
-        };
-      };
-      case (null) {};
-    };
-    false;
-  };
-
-  public query ({ caller }) func getGlobalNotifications() : async [Notification] {
-    // Public notifications - no authorization required
-    notifications.values().toArray();
-  };
-
-  public shared ({ caller }) func approveHospital(hospitalId : Principal) : async Bool {
-    if (not (AccessControl.isAdmin(accessControlState, caller))) {
-      Runtime.trap("Unauthorized: Only admins can approve hospitals");
-    };
-    switch (hospitalProfiles.get(hospitalId)) {
-      case (?profile) {
-        let updatedProfile : HospitalProfile = {
-          userId = profile.userId;
-          licenseNumber = profile.licenseNumber;
-          hospitalName = profile.hospitalName;
-          address = profile.address;
-          isApproved = true;
-        };
-        hospitalProfiles.add(hospitalId, updatedProfile);
+        notifications.add(notifId, notif);
         true;
       };
       case (null) { false };
     };
   };
 
-  public query ({ caller }) func getAllHospitals() : async [HospitalProfile] {
-    // Public list - no authorization required
-    hospitalProfiles.values().toArray();
+  // Delete a blood request — allowed by: the original poster (any device), hospital, blood bank, NGO, admin.
+  // Also removes all associated notifications so they disappear from everyone's feed.
+  public shared ({ caller }) func deleteBloodRequest(requestId : Nat) : async Bool {
+    if (caller.isAnonymous()) { return false };
+    switch (bloodRequests.get(requestId)) {
+      case (?req) {
+        if (not canDeleteBloodRequest(caller, req)) { return false };
+        bloodRequests.remove(requestId);
+        // Delete all notifications linked to this blood request
+        let linkedNotifIds = notifications.values().toArray()
+          .filter(func(n : Notification) : Bool {
+            switch (n.bloodRequestId) {
+              case (?rid) { rid == requestId };
+              case (null) { false };
+            };
+          })
+          .map(func(n : Notification) : Nat { n.id });
+        for (nid in linkedNotifIds.vals()) {
+          notifications.remove(nid);
+        };
+        true;
+      };
+      case (null) { false };
+    };
+  };
+
+  // Permanently delete a global notification
+  public shared ({ caller }) func deleteGlobalNotification(notifId : Nat) : async Bool {
+    if (caller.isAnonymous()) { return false };
+    switch (notifications.get(notifId)) {
+      case (?_) {
+        notifications.remove(notifId);
+        true;
+      };
+      case (null) { false };
+    };
+  };
+
+  // -------------------------------------------------------
+  // Delete Account
+  // -------------------------------------------------------
+  public shared ({ caller }) func deleteAccount() : async Bool {
+    if (not isRegisteredUser(caller)) { return false };
+    users.remove(caller);
+    userProfiles.remove(caller);
+    donorProfiles.remove(caller);
+    hospitalProfiles.remove(caller);
+    bloodInventoryMap.remove(caller);
+    let toDelete = bloodRequests.values().toArray()
+      .filter(func(r : BloodRequest) : Bool { r.requesterId == caller })
+      .map(func(r : BloodRequest) : Nat { r.id });
+    for (id in toDelete.vals()) {
+      bloodRequests.remove(id);
+    };
+    true;
+  };
+
+  // -------------------------------------------------------
+  // Notifications
+  // -------------------------------------------------------
+  public query ({ caller }) func getGlobalNotifications() : async [Notification] {
+    notifications.values().toArray();
+  };
+
+  public shared ({ caller }) func createCampNotification(title : Text, message : Text) : async Bool {
+    if (caller.isAnonymous()) { return false };
+    let notifId = nextNotificationId;
+    nextNotificationId += 1;
+    let notif : Notification = {
+      id = notifId;
+      title;
+      message;
+      timestamp = Time.now();
+      bloodRequestId = null;
+      createdBy = caller;
+    };
+    notifications.add(notifId, notif);
+    true;
   };
 };

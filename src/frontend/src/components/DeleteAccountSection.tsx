@@ -15,11 +15,13 @@ import { useNavigate } from "@tanstack/react-router";
 import { AlertTriangle, Loader2, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
+import { useApp } from "../contexts/AppContext";
 import { useDeleteAccount } from "../hooks/useQueries";
 
 export function DeleteAccountSection() {
   const navigate = useNavigate();
   const deleteAccount = useDeleteAccount();
+  const { setUserProfile } = useApp();
   const [confirmText, setConfirmText] = useState("");
   const [open, setOpen] = useState(false);
 
@@ -28,10 +30,21 @@ export function DeleteAccountSection() {
   const handleDelete = async () => {
     if (!canDelete) return;
     try {
-      await deleteAccount.mutateAsync();
+      // Attempt backend deletion (may return false for already-deleted users — still proceed)
+      try {
+        await deleteAccount.mutateAsync();
+      } catch {
+        // If backend errors, still clear local state and redirect
+      }
+
+      // Clear all local state
+      setUserProfile(null);
       localStorage.clear();
+
       toast.success("Account deleted successfully");
-      void navigate({ to: "/" });
+
+      // Redirect to register page
+      void navigate({ to: "/register" });
     } catch {
       toast.error("Failed to delete account. Please try again.");
     }

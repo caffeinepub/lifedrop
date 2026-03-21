@@ -1,9 +1,15 @@
 import { Button } from "@/components/ui/button";
-import { Bell, BellOff, CheckCheck, Globe, Trash2 } from "lucide-react";
-import { useMemo } from "react";
+import { Bell, BellOff, CheckCheck, Globe, Trash2, X } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 import { NeuralPulseDecor } from "../components/NeuralPulseDecor";
-import { useNotifications } from "../hooks/useNotifications";
-import { useGlobalNotifications } from "../hooks/useQueries";
+import {
+  dismissGlobalNotification,
+  useNotifications,
+} from "../hooks/useNotifications";
+import {
+  useDeleteGlobalNotification,
+  useGlobalNotifications,
+} from "../hooks/useQueries";
 
 function timeAgo(timestamp: number): string {
   const diffMs = Date.now() - timestamp;
@@ -23,27 +29,66 @@ const TYPE_DOT: Record<string, string> = {
 };
 
 export function NotificationsPage() {
-  const { notifications, unreadCount, markAllRead, clearAll } =
-    useNotifications();
-  const { data: backendNotifs = [] } = useGlobalNotifications();
+  const {
+    notifications,
+    unreadCount,
+    markAllRead,
+    clearAll,
+    deleteNotification,
+    dismissedIds,
+  } = useNotifications();
+  const { data: backendNotifs = [], refetch } = useGlobalNotifications();
+  const deleteGlobalNotif = useDeleteGlobalNotification();
+  // Local state to allow instant UI removal without waiting for hook re-render
+  const [localDismissed, setLocalDismissed] = useState<Set<string>>(new Set());
+
+  // Registration timestamp — only show notifications received AFTER registering
+  const registeredAt = useMemo(() => {
+    const ts = localStorage.getItem("lifedrop_registered_at");
+    return ts ? Number.parseInt(ts, 10) : 0;
+  }, []);
+
+  // Auto-refresh backend notifications every 10 seconds on this page
+  useEffect(() => {
+    const interval = setInterval(() => {
+      void refetch();
+    }, 10000);
+    return () => clearInterval(interval);
+  }, [refetch]);
 
   // Map backend notifications to local shape, mark as global
   const globalNotifs = useMemo(
     () =>
-      backendNotifs.map((n) => ({
-        id: `global-${n.id.toString()}`,
-        message: n.message,
-        timestamp: Number(n.timestamp) / 1_000_000,
-        read: false,
-        type: "alert" as const,
-        isGlobal: true,
-      })),
-    [backendNotifs],
+      backendNotifs
+        .filter((n) => {
+          const key = `global-${n.id.toString()}`;
+          if (dismissedIds.has(key) || localDismissed.has(key)) return false;
+          // Only show notifications received AFTER the user registered
+          if (registeredAt > 0) {
+            const notifTime = Number(n.timestamp) / 1_000_000; // nanoseconds → ms
+            if (notifTime < registeredAt) return false;
+          }
+          return true;
+        })
+        .map((n) => ({
+          id: `global-${n.id.toString()}`,
+          title: n.title,
+          message: n.message,
+          timestamp: Number(n.timestamp) / 1_000_000,
+          read: false,
+          type: "alert" as const,
+          isGlobal: true,
+        })),
+    [backendNotifs, dismissedIds, localDismissed, registeredAt],
   );
 
   // Merge: global always at top, then local, deduplicated by id
   const merged = useMemo(() => {
-    const localWithFlag = notifications.map((n) => ({ ...n, isGlobal: false }));
+    const localWithFlag = notifications.map((n) => ({
+      ...n,
+      isGlobal: false,
+      title: undefined,
+    }));
     const all = [...globalNotifs, ...localWithFlag];
     const seen = new Set<string>();
     return all.filter((n) => {
@@ -54,6 +99,22 @@ export function NotificationsPage() {
   }, [globalNotifs, notifications]);
 
   const totalUnread = unreadCount + globalNotifs.length;
+
+  function handleDelete(id: string, isGlobal: boolean) {
+    if (isGlobal) {
+      // Immediately hide from UI
+      setLocalDismissed((prev) => new Set([...prev, id]));
+      dismissGlobalNotification(id);
+      // Permanently delete from backend so it's gone for everyone
+      const numericId = id.replace("global-", "");
+      const notifId = BigInt(numericId);
+      void deleteGlobalNotif.mutateAsync(notifId).catch(() => {
+        // If backend delete fails, the local dismiss still hides it
+      });
+    } else {
+      deleteNotification(id);
+    }
+  }
 
   return (
     <>
@@ -112,7 +173,7 @@ export function NotificationsPage() {
                 data-ocid="notifications.clearall.delete_button"
               >
                 <Trash2 className="h-3.5 w-3.5" />
-                Clear Local
+                Clear All
               </Button>
             )}
           </div>
@@ -179,6 +240,11 @@ export function NotificationsPage() {
                         <Globe className="h-3 w-3" />📢 For Everyone
                       </span>
                     )}
+                    {n.isGlobal && (n as any).title && (
+                      <span className="text-xs font-semibold text-foreground">
+                        {(n as any).title}
+                      </span>
+                    )}
                   </div>
                   <p
                     className="text-sm"
@@ -195,13 +261,25 @@ export function NotificationsPage() {
                     {timeAgo(n.timestamp)}
                   </p>
                 </div>
-                {/* Unread dot */}
-                {!n.read && (
-                  <div
-                    className="w-2 h-2 rounded-full flex-shrink-0 mt-1.5"
-                    style={{ backgroundColor: "oklch(var(--neon-red))" }}
-                  />
-                )}
+                {/* Unread dot + Delete button */}
+                <div className="flex items-center gap-1 flex-shrink-0">
+                  {!n.read && (
+                    <div
+                      className="w-2 h-2 rounded-full"
+                      style={{ backgroundColor: "oklch(var(--neon-red))" }}
+                    />
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => handleDelete(n.id, n.isGlobal)}
+                    className="p-1 rounded-md opacity-50 hover:opacity-100 transition-opacity hover:bg-destructive/10"
+                    aria-label="Delete notification"
+                    data-ocid={`notifications.item.delete.${i + 1}`}
+                    style={{ color: "oklch(var(--neon-red))" }}
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                </div>
               </div>
             ))}
           </div>

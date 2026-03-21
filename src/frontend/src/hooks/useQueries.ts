@@ -164,6 +164,27 @@ export function useGlobalNotifications() {
   });
 }
 
+// ─── Delete Global Notification (client-side dismissal only) ─────────────
+// Global notifications are dismissed locally via localStorage — no backend
+// delete endpoint exists. The notification is hidden for this user permanently.
+export function useDeleteGlobalNotification() {
+  const { actor } = useDeviceActor();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (notifId: bigint) => {
+      if (!actor) return false;
+      try {
+        return await actor.deleteGlobalNotification(notifId);
+      } catch {
+        return false;
+      }
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["globalNotifications"] });
+    },
+  });
+}
+
 // ─── Delete Account ───────────────────────────────────────────
 export function useDeleteAccount() {
   const { actor } = useDeviceActor();

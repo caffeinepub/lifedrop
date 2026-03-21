@@ -198,6 +198,7 @@ export interface backendInterface {
     createBloodRequest(patientName: string, bloodGroup: BloodGroup, quantityMl: bigint, hospitalName: string, city: string, urgency: UrgencyLevel, contact: string): Promise<bigint>;
     deleteAccount(): Promise<boolean>;
     deleteBloodRequest(requestId: bigint): Promise<boolean>;
+    deleteGlobalNotification(notifId: bigint): Promise<boolean>;
     fulfillBloodRequest(requestId: bigint, thankYouMessage: string): Promise<boolean>;
     getAllDonorsList(): Promise<Array<DonorPublicInfo>>;
     getAllHospitals(): Promise<Array<HospitalProfile>>;
@@ -305,6 +306,20 @@ export class Backend implements backendInterface {
             }
         } else {
             const result = await this.actor.deleteBloodRequest(arg0);
+            return result;
+        }
+    }
+    async deleteGlobalNotification(arg0: bigint): Promise<boolean> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.deleteGlobalNotification(arg0);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.deleteGlobalNotification(arg0);
             return result;
         }
     }

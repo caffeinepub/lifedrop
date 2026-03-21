@@ -103,6 +103,23 @@ function timeAgo(nanoseconds: bigint): string {
   return `${Math.floor(diffHr / 24)}d ago`;
 }
 
+// Build a WhatsApp URL from a phone number (assumes Indian +91 if no country code)
+function whatsappUrl(
+  phone: string,
+  patientName: string,
+  bloodGroup: string,
+  hospitalName: string,
+  city: string,
+): string {
+  const digits = phone.replace(/\D/g, "");
+  // If it's 10 digits, prepend India country code
+  const e164 = digits.length === 10 ? `91${digits}` : digits;
+  const text = encodeURIComponent(
+    `Hello! I saw your blood request on LIFEDROP. Patient: ${patientName}, Blood Group: ${bloodGroup}, Hospital: ${hospitalName}, ${city}. I can help! Please contact me.`,
+  );
+  return `https://wa.me/${e164}?text=${text}`;
+}
+
 const MIN_THANK_YOU_LENGTH = 10;
 
 export function BloodRequestsPage() {
@@ -130,6 +147,18 @@ export function BloodRequestsPage() {
     } catch {
       return "";
     }
+  }, []);
+
+  // Roles that can delete any blood request (in addition to the requester)
+  const canDeleteAny = useMemo(() => {
+    const role = localStorage.getItem("lifedrop_user_role") ?? "";
+    const roleStr = role.toLowerCase();
+    return (
+      roleStr === "hospital" ||
+      roleStr === "bloodbank" ||
+      roleStr === "ngo" ||
+      roleStr === "admin"
+    );
   }, []);
 
   const filteredRequests = (requests ?? []).filter((r) => {
@@ -177,7 +206,7 @@ export function BloodRequestsPage() {
       });
       const bg =
         bloodGroupLabel[activeRequest.bloodGroup] ?? activeRequest.bloodGroup;
-      const broadcastMsg = `🩸 Blood has been received! ${activeRequest.patientName} (${bg}, ${activeRequest.city}) sends heartfelt thanks to all helpers. “${thankYouMsg.trim()}”`;
+      const broadcastMsg = `🩸 Blood has been received! ${activeRequest.patientName} (${bg}, ${activeRequest.city}) sends heartfelt thanks to all helpers. "${thankYouMsg.trim()}"`;
       addNotificationGlobal(broadcastMsg, "success");
       toast.success("Thank you message sent to all users!", { duration: 5000 });
       setThankYouOpen(false);
@@ -224,8 +253,8 @@ export function BloodRequestsPage() {
             <span style={{ color: "oklch(var(--neon-red))" }}>Requests</span>
           </h1>
           <p className="text-muted-foreground text-sm">
-            All emergency blood requests visible to everyone. Help save a life
-            today.
+            All emergency blood requests visible to everyone. Anyone can post —
+            no registration required.
           </p>
         </div>
 
@@ -285,7 +314,7 @@ export function BloodRequestsPage() {
               data-ocid="bloodreqs.submit.primary_button"
             >
               <AlertTriangle className="h-3.5 w-3.5" />
-              Submit Request
+              Post Request
             </Button>
           </Link>
         </div>
@@ -329,7 +358,7 @@ export function BloodRequestsPage() {
                 className="btn-glow font-bold"
                 data-ocid="bloodreqs.empty.submit.primary_button"
               >
-                Submit Emergency Request
+                Post a Blood Request
               </Button>
             </Link>
           </div>
@@ -340,7 +369,8 @@ export function BloodRequestsPage() {
               const bg =
                 bloodGroupLabel[req.bloodGroup as string] ?? req.bloodGroup;
               const isOwner =
-                myPrincipal && req.requesterId.toString() === myPrincipal;
+                myPrincipal &&
+                (req.requesterId.toString() === myPrincipal || canDeleteAny);
 
               return (
                 <div
@@ -411,21 +441,59 @@ export function BloodRequestsPage() {
 
                     {/* Actions */}
                     <div className="flex flex-col gap-2 flex-shrink-0">
-                      {/* Contact button (always visible) */}
-                      <a href={`tel:${req.contactNumber}`}>
-                        <Button
-                          size="sm"
-                          className="gap-1.5 w-full"
-                          style={{
-                            backgroundColor: uc.color,
-                            color: "white",
-                          }}
-                          data-ocid={`bloodreqs.contact.button.${i + 1}`}
+                      {/* Contact buttons — always visible */}
+                      <div className="flex gap-2">
+                        <a href={`tel:${req.contactNumber}`} className="flex-1">
+                          <Button
+                            size="sm"
+                            className="gap-1.5 w-full"
+                            style={{
+                              backgroundColor: uc.color,
+                              color: "white",
+                            }}
+                            data-ocid={`bloodreqs.contact.button.${i + 1}`}
+                          >
+                            <Phone className="h-3.5 w-3.5" />
+                            Call
+                          </Button>
+                        </a>
+
+                        {/* WhatsApp button */}
+                        <a
+                          href={whatsappUrl(
+                            req.contactNumber,
+                            req.patientName,
+                            bg,
+                            req.hospitalName,
+                            req.city,
+                          )}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex-1"
                         >
-                          <Phone className="h-3.5 w-3.5" />
-                          {req.contactNumber}
-                        </Button>
-                      </a>
+                          <Button
+                            size="sm"
+                            className="gap-1.5 w-full font-semibold"
+                            style={{
+                              backgroundColor: "#25D366",
+                              color: "white",
+                              boxShadow: "0 0 10px #25D36640",
+                            }}
+                            data-ocid={`bloodreqs.whatsapp.button.${i + 1}`}
+                          >
+                            <svg
+                              role="img"
+                              aria-label="WhatsApp"
+                              className="h-3.5 w-3.5"
+                              viewBox="0 0 24 24"
+                              fill="currentColor"
+                            >
+                              <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" />
+                            </svg>
+                            WhatsApp
+                          </Button>
+                        </a>
+                      </div>
 
                       {/* Owner-only actions */}
                       {isOwner && (

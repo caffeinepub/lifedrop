@@ -2,6 +2,8 @@
 // Each notification: { id, message, timestamp, read, type }
 
 const STORAGE_KEY = "lifedrop_notifications";
+// Track dismissed global (backend) notification IDs
+const DISMISSED_KEY = "lifedrop_dismissed_global_notifs";
 
 export type NotificationType = "info" | "success" | "alert";
 
@@ -30,6 +32,26 @@ function saveNotifications(notifications: Notification[]): void {
   }
 }
 
+export function loadDismissedGlobalIds(): Set<string> {
+  try {
+    const raw = localStorage.getItem(DISMISSED_KEY);
+    return raw ? new Set(JSON.parse(raw) as string[]) : new Set();
+  } catch {
+    return new Set();
+  }
+}
+
+export function dismissGlobalNotification(id: string): void {
+  const set = loadDismissedGlobalIds();
+  set.add(id);
+  try {
+    localStorage.setItem(DISMISSED_KEY, JSON.stringify([...set]));
+  } catch {
+    // ignore
+  }
+  window.dispatchEvent(new CustomEvent("lifedrop_notification"));
+}
+
 // Standalone function — safe to call outside React (e.g. in event handlers)
 export function addNotificationGlobal(
   message: string,
@@ -53,11 +75,15 @@ import { useCallback, useEffect, useState } from "react";
 export function useNotifications() {
   const [notifications, setNotifications] =
     useState<Notification[]>(loadNotifications);
+  const [dismissedIds, setDismissedIds] = useState<Set<string>>(
+    loadDismissedGlobalIds,
+  );
 
   // Sync from localStorage whenever the custom event fires
   useEffect(() => {
     function sync() {
       setNotifications(loadNotifications());
+      setDismissedIds(loadDismissedGlobalIds());
     }
     window.addEventListener("lifedrop_notification", sync);
     window.addEventListener("storage", sync);
@@ -88,5 +114,19 @@ export function useNotifications() {
     setNotifications([]);
   }, []);
 
-  return { notifications, unreadCount, addNotification, markAllRead, clearAll };
+  const deleteNotification = useCallback((id: string) => {
+    const updated = loadNotifications().filter((n) => n.id !== id);
+    saveNotifications(updated);
+    setNotifications(updated);
+  }, []);
+
+  return {
+    notifications,
+    unreadCount,
+    addNotification,
+    markAllRead,
+    clearAll,
+    deleteNotification,
+    dismissedIds,
+  };
 }

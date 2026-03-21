@@ -115,6 +115,7 @@ export interface backendInterface {
     createBloodRequest(patientName: string, bloodGroup: BloodGroup, quantityMl: bigint, hospitalName: string, city: string, urgency: UrgencyLevel, contact: string): Promise<bigint>;
     deleteAccount(): Promise<boolean>;
     deleteBloodRequest(requestId: bigint): Promise<boolean>;
+    deleteGlobalNotification(notifId: bigint): Promise<boolean>;
     fulfillBloodRequest(requestId: bigint, thankYouMessage: string): Promise<boolean>;
     getAllDonorsList(): Promise<Array<DonorPublicInfo>>;
     getAllHospitals(): Promise<Array<HospitalProfile>>;
