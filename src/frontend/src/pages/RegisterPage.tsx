@@ -251,7 +251,7 @@ function useRegisterLogic(role: Role) {
       setStatus("registering");
       setErrorMsg("");
       let waited = 0;
-      while (!actorRef.current && waited < 12000) {
+      while (!actorRef.current && waited < 5000) {
         await new Promise((r) => setTimeout(r, 200));
         waited += 200;
       }
