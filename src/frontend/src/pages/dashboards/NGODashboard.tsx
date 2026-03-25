@@ -17,6 +17,7 @@ import { toast } from "sonner";
 import { CampPosterDialog } from "../../components/CampPosterDialog";
 import { DeleteAccountSection } from "../../components/DeleteAccountSection";
 import { PhoneInput, extractPhoneDigits } from "../../components/PhoneInput";
+import { UserManagementSection } from "../../components/UserManagementSection";
 import { type CampAnnouncement, useApp } from "../../contexts/AppContext";
 import { useSearchDonors } from "../../hooks/useQueries";
 
@@ -619,9 +620,10 @@ export function NGODashboard() {
                     .replace("Negative", "−")}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div className="text-sm font-mono text-muted-foreground truncate">
-                    {v.userId.toString().slice(0, 12)}...
+                  <div className="text-sm font-semibold text-foreground truncate">
+                    {v.name || v.userId.toString().slice(0, 12)}
                   </div>
+                  <div className="text-xs text-muted-foreground">{v.city}</div>
                   <div
                     className="text-xs"
                     style={{ color: "oklch(0.65 0.2 140)" }}
@@ -652,6 +654,7 @@ export function NGODashboard() {
           if (!open) setPosterCamp(null);
         }}
       />
+      <UserManagementSection />
       <DeleteAccountSection />
     </main>
   );

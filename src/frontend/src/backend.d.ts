@@ -64,6 +64,14 @@ export interface PublicUserEntry {
     role: Role;
     bloodGroup?: BloodGroup;
 }
+export interface AdminUserEntry {
+    id: Principal;
+    name: string;
+    role: Role;
+    city: string;
+    bloodGroup?: BloodGroup;
+    createdAt: bigint;
+}
 export interface HospitalProfile {
     isApproved: boolean;
     userId: Principal;
@@ -110,9 +118,11 @@ export enum UserRole {
     guest = "guest"
 }
 export interface backendInterface {
+    adminDeleteUser(targetPrincipal: Principal): Promise<boolean>;
     approveHospital(hospitalId: Principal): Promise<boolean>;
     assignCallerUserRole(user: Principal, role: UserRole): Promise<void>;
     createBloodRequest(patientName: string, bloodGroup: BloodGroup, quantityMl: bigint, hospitalName: string, city: string, urgency: UrgencyLevel, contact: string): Promise<bigint>;
+    createCampNotification(title: string, message: string): Promise<boolean>;
     deleteAccount(): Promise<boolean>;
     deleteBloodRequest(requestId: bigint): Promise<boolean>;
     deleteGlobalNotification(notifId: bigint): Promise<boolean>;
@@ -120,6 +130,7 @@ export interface backendInterface {
     getAllDonorsList(): Promise<Array<DonorPublicInfo>>;
     getAllHospitals(): Promise<Array<HospitalProfile>>;
     getAllUsers(): Promise<Array<User>>;
+    getAllUsersForManagement(): Promise<Array<AdminUserEntry>>;
     getBloodRequests(): Promise<Array<BloodRequest>>;
     getCallerDonorProfile(): Promise<DonorProfile | null>;
     getCallerUserProfile(): Promise<UserProfile | null>;
@@ -135,6 +146,7 @@ export interface backendInterface {
     saveCallerUserProfile(profile: UserProfile): Promise<void>;
     searchDonors(bloodGroup: BloodGroup | null, city: string | null, availableOnly: boolean): Promise<Array<DonorProfile>>;
     searchDonorsPublic(bloodGroup: BloodGroup | null, city: string | null, name: string | null, availableOnly: boolean): Promise<Array<DonorPublicInfo>>;
+    updateBloodInventory(inventory: Array<[BloodGroup, bigint]>): Promise<boolean>;
     updateDonorAvailability(available: boolean): Promise<boolean>;
     updateHospitalProfile(licenseNumber: string, hospitalName: string, address: string): Promise<boolean>;
     updateUser(user: User): Promise<void>;

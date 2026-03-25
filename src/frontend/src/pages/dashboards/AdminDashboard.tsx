@@ -11,8 +11,8 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
-import { Role } from "../../backend.d";
 import { DeleteAccountSection } from "../../components/DeleteAccountSection";
+import { UserManagementSection } from "../../components/UserManagementSection";
 import {
   useAllHospitals,
   useAllUsers,
@@ -108,7 +108,14 @@ export function AdminDashboard() {
   const approveHospital = useApproveHospital();
 
   const totalUsers = users?.length ?? 0;
-  const totalDonors = users?.filter((u) => u.role === Role.donor).length ?? 0;
+  const getRoleKey = (role: unknown): string => {
+    if (typeof role === "string") return role;
+    if (role && typeof role === "object")
+      return Object.keys(role as object)[0] ?? "";
+    return "";
+  };
+  const totalDonors =
+    users?.filter((u) => getRoleKey(u.role) === "donor").length ?? 0;
   const activeRequests = requests?.length ?? 0;
   const pendingHospitals = hospitals?.filter((h) => !h.isApproved).length ?? 0;
 
@@ -125,8 +132,14 @@ export function AdminDashboard() {
   const bloodGroupData: Record<string, number> = {};
   for (const u of users ?? []) {
     if (u.bloodGroup) {
-      const label = bgMap[u.bloodGroup] ?? u.bloodGroup;
-      bloodGroupData[label] = (bloodGroupData[label] ?? 0) + 1;
+      const bgKey =
+        typeof u.bloodGroup === "string"
+          ? u.bloodGroup
+          : u.bloodGroup && typeof u.bloodGroup === "object"
+            ? Object.keys(u.bloodGroup as object)[0]
+            : "";
+      const label = bgMap[bgKey] ?? bgKey;
+      if (label) bloodGroupData[label] = (bloodGroupData[label] ?? 0) + 1;
     }
   }
 
@@ -346,13 +359,14 @@ export function AdminDashboard() {
                           <span
                             className="text-xs px-2 py-1 rounded-full font-medium"
                             style={{
-                              backgroundColor: `${roleColors[user.role] ?? "oklch(var(--muted))"} / 0.12)`,
+                              backgroundColor: `${roleColors[getRoleKey(user.role)] ?? "oklch(var(--muted))"} / 0.12)`,
                               color:
-                                roleColors[user.role] ??
+                                roleColors[getRoleKey(user.role)] ??
                                 "oklch(var(--muted-foreground))",
                             }}
                           >
-                            {roleLabels[user.role] ?? user.role}
+                            {roleLabels[getRoleKey(user.role)] ??
+                              getRoleKey(user.role)}
                           </span>
                         </td>
                         <td className="px-4 py-3 text-muted-foreground">
@@ -600,6 +614,7 @@ export function AdminDashboard() {
           )}
         </TabsContent>
       </Tabs>
+      <UserManagementSection />
       <DeleteAccountSection />
     </main>
   );

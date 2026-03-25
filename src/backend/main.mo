@@ -120,6 +120,16 @@ actor {
     bloodGroup : ?BloodGroup;
   };
 
+  // Extended user entry for admin management
+  public type AdminUserEntry = {
+    id : Principal;
+    name : Text;
+    role : Role;
+    city : Text;
+    bloodGroup : ?BloodGroup;
+    createdAt : Int;
+  };
+
   let users = Map.empty<Principal, User>();
   let userProfiles = Map.empty<Principal, UserProfile>();
   let donorProfiles = Map.empty<Principal, DonorProfile>();
@@ -127,7 +137,6 @@ actor {
   var bloodRequests = Map.empty<Nat, BloodRequest>();
   let notifications = Map.empty<Nat, Notification>();
   let bloodInventoryMap = Map.empty<Principal, [(BloodGroup, Nat)]>();
-  // Kept for stable variable compatibility with previous canister version
   let deletedRequestIds = Map.empty<Nat, Bool>();
 
   var nextRequestId = 0;
@@ -156,8 +165,18 @@ actor {
     };
   };
 
-  // Anyone who posted (same device principal) can delete their own request.
-  // Hospital, Blood Bank, NGO, Admin can delete any request.
+  // Check if caller can manage (delete) other users
+  func canManageUsers(caller : Principal) : Bool {
+    if (caller.isAnonymous()) { return false };
+    switch (getUserRole(caller)) {
+      case (?#hospital) { true };
+      case (?#bloodBank) { true };
+      case (?#ngo) { true };
+      case (?#admin) { true };
+      case (_) { false };
+    };
+  };
+
   func canDeleteBloodRequest(caller : Principal, req : BloodRequest) : Bool {
     if (caller.isAnonymous()) { return false };
     if (req.requesterId == caller) { return true };
@@ -310,6 +329,38 @@ actor {
   public query ({ caller }) func getAllUsers() : async [User] {
     if (not isAppAdmin(caller)) { return [] };
     users.values().toArray();
+  };
+
+  // Extended user list for hospital/NGO/blood bank management
+  public query ({ caller }) func getAllUsersForManagement() : async [AdminUserEntry] {
+    if (not canManageUsers(caller)) { return [] };
+    users.values().toArray().map(func(u : User) : AdminUserEntry {
+      {
+        id = u.id;
+        name = u.name;
+        role = u.role;
+        city = u.city;
+        bloodGroup = u.bloodGroup;
+        createdAt = u.createdAt;
+      };
+    });
+  };
+
+  // Delete any user account — allowed by hospital, blood bank, NGO, admin
+  public shared ({ caller }) func adminDeleteUser(targetPrincipal : Principal) : async Bool {
+    if (not canManageUsers(caller)) { return false };
+    if (not users.containsKey(targetPrincipal)) { return false };
+    // Don't allow deleting another admin
+    switch (getUserRole(targetPrincipal)) {
+      case (?#admin) { return false };
+      case (_) {};
+    };
+    users.remove(targetPrincipal);
+    userProfiles.remove(targetPrincipal);
+    donorProfiles.remove(targetPrincipal);
+    hospitalProfiles.remove(targetPrincipal);
+    bloodInventoryMap.remove(targetPrincipal);
+    true;
   };
 
   public shared ({ caller }) func updateUser(user : User) : async () {
@@ -538,8 +589,6 @@ actor {
 
   // -------------------------------------------------------
   // Blood Requests
-  // Anyone with a non-anonymous device identity can post a blood request.
-  // Registration is NOT required — guests, volunteers, NGOs, hospitals, anyone.
   // -------------------------------------------------------
   public shared ({ caller }) func createBloodRequest(
     patientName : Text,
@@ -550,7 +599,6 @@ actor {
     urgency : UrgencyLevel,
     contact : Text,
   ) : async Nat {
-    // Only block truly anonymous callers (no device identity)
     if (caller.isAnonymous()) { return 0 };
 
     let id = nextRequestId;
@@ -573,7 +621,6 @@ actor {
     };
     bloodRequests.add(id, req);
 
-    // Broadcast emergency notification to all users
     let notifId = nextNotificationId;
     nextNotificationId += 1;
     let notif : Notification = {
@@ -586,14 +633,13 @@ actor {
     };
     notifications.add(notifId, notif);
 
-    id + 1; // >0 = success
+    id + 1;
   };
 
   public query ({ caller }) func getBloodRequests() : async [BloodRequest] {
     bloodRequests.values().toArray().filter(func(b) { not b.fulfilled });
   };
 
-  // Only the original poster (any device identity) or hospital/NGO/blood bank can fulfill.
   public shared ({ caller }) func fulfillBloodRequest(requestId : Nat, thankYouMessage : Text) : async Bool {
     if (caller.isAnonymous()) { return false };
     switch (bloodRequests.get(requestId)) {
@@ -621,7 +667,7 @@ actor {
         nextNotificationId += 1;
         let notif : Notification = {
           id = notifId;
-          title = "🩸 Blood Received — Thank You!";
+          title = "🩸 Blood Received - Thank You!";
           message = "Blood received for patient " # req.patientName # "! " # (if (thankYouMessage == "") { "Thank you to all helpers!" } else { thankYouMessage });
           timestamp = Time.now();
           bloodRequestId = ?requestId;
@@ -634,15 +680,12 @@ actor {
     };
   };
 
-  // Delete a blood request — allowed by: the original poster (any device), hospital, blood bank, NGO, admin.
-  // Also removes all associated notifications so they disappear from everyone's feed.
   public shared ({ caller }) func deleteBloodRequest(requestId : Nat) : async Bool {
     if (caller.isAnonymous()) { return false };
     switch (bloodRequests.get(requestId)) {
       case (?req) {
         if (not canDeleteBloodRequest(caller, req)) { return false };
         bloodRequests.remove(requestId);
-        // Delete all notifications linked to this blood request
         let linkedNotifIds = notifications.values().toArray()
           .filter(func(n : Notification) : Bool {
             switch (n.bloodRequestId) {
@@ -660,7 +703,6 @@ actor {
     };
   };
 
-  // Permanently delete a global notification
   public shared ({ caller }) func deleteGlobalNotification(notifId : Nat) : async Bool {
     if (caller.isAnonymous()) { return false };
     switch (notifications.get(notifId)) {

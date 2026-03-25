@@ -251,8 +251,7 @@ export function useUpdateDonorAvailability() {
 
 // ─── Admin / Hospitals ────────────────────────────────────────
 export function useAllUsers() {
-  const { actor, isFetching } = useActor();
-  const { identity } = useInternetIdentity();
+  const { actor, isFetching } = useDeviceActor();
   return useQuery({
     queryKey: ["allUsers"],
     queryFn: async () => {
@@ -260,11 +259,10 @@ export function useAllUsers() {
       try {
         return await actor.getAllUsers();
       } catch {
-        // getAllUsers requires admin role — return empty array for non-admin users
         return [];
       }
     },
-    enabled: !!actor && !isFetching && !!identity,
+    enabled: !!actor && !isFetching,
     retry: 2,
     retryDelay: 1000,
   });
@@ -467,5 +465,55 @@ export function useSearchDonorsPublic(
     gcTime: 0,
     retry: 2,
     retryDelay: 1000,
+  });
+}
+
+export function useAllUsersForManagement() {
+  const { actor, isFetching } = useDeviceActor();
+  return useQuery({
+    queryKey: ["allUsersForManagement"],
+    queryFn: async () => {
+      if (!actor) return [];
+      try {
+        // Try the management-specific endpoint first, fall back to getAllUsers
+        let users: any[] = [];
+        try {
+          users = (await (actor as any).getAllUsersForManagement()) as any[];
+        } catch {
+          users = await actor.getAllUsers();
+        }
+        return users;
+      } catch {
+        return [];
+      }
+    },
+    enabled: !!actor && !isFetching,
+    retry: 2,
+    retryDelay: 1000,
+  });
+}
+
+export function useAdminDeleteUser() {
+  const { actor } = useDeviceActor();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (targetPrincipalText: string) => {
+      if (!actor) throw new Error("Not connected");
+      try {
+        const { Principal } = await import("@icp-sdk/core/principal");
+        const result = (await (actor as any).adminDeleteUser(
+          Principal.fromText(targetPrincipalText),
+        )) as boolean;
+        if (!result) throw new Error("Delete failed");
+        return result;
+      } catch (e: any) {
+        throw new Error(e?.message || "Failed to delete user");
+      }
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["allUsersForManagement"] });
+      qc.invalidateQueries({ queryKey: ["publicUserList"] });
+      qc.invalidateQueries({ queryKey: ["allUsers"] });
+    },
   });
 }

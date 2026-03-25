@@ -26,6 +26,7 @@ import { toast } from "sonner";
 import { CampPosterDialog } from "../../components/CampPosterDialog";
 import { DeleteAccountSection } from "../../components/DeleteAccountSection";
 import { PhoneInput, extractPhoneDigits } from "../../components/PhoneInput";
+import { UserManagementSection } from "../../components/UserManagementSection";
 import { type CampAnnouncement, useApp } from "../../contexts/AppContext";
 
 type BloodUnit = {
@@ -890,6 +891,7 @@ export function BloodBankDashboard() {
           if (!open) setPosterCamp(null);
         }}
       />
+      <UserManagementSection />
       <DeleteAccountSection />
     </main>
   );

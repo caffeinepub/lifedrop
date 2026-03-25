@@ -18,7 +18,15 @@ export interface Notification {
 function loadNotifications(): Notification[] {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? (JSON.parse(raw) as Notification[]) : [];
+    const all = raw ? (JSON.parse(raw) as Notification[]) : [];
+    const registeredAt = Number.parseInt(
+      localStorage.getItem("lifedrop_registered_at") ?? "0",
+      10,
+    );
+    if (registeredAt > 0) {
+      return all.filter((n) => n.timestamp >= registeredAt);
+    }
+    return all;
   } catch {
     return [];
   }

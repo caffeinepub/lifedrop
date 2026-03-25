@@ -9,9 +9,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Building2, CheckCircle, Clock, Minus, Plus } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { DeleteAccountSection } from "../../components/DeleteAccountSection";
+import { UserManagementSection } from "../../components/UserManagementSection";
 import { useApp } from "../../contexts/AppContext";
 
 type BloodInventory = {
@@ -74,8 +75,21 @@ export function HospitalDashboard() {
     }
   }, []);
 
-  const [inventory, setInventory] = useState<BloodInventory[]>([]);
+  const [inventory, setInventory] = useState<BloodInventory[]>(() => {
+    try {
+      const raw = localStorage.getItem("lifedrop_hospital_inventory");
+      return raw ? (JSON.parse(raw) as BloodInventory[]) : [];
+    } catch {
+      return [];
+    }
+  });
   const [adjustAmount, setAdjustAmount] = useState<Record<string, string>>({});
+  useEffect(() => {
+    localStorage.setItem(
+      "lifedrop_hospital_inventory",
+      JSON.stringify(inventory),
+    );
+  }, [inventory]);
 
   // Add stock form
   const [addGroup, setAddGroup] = useState("");
@@ -471,6 +485,7 @@ export function HospitalDashboard() {
           </div>
         </div>
       </div>
+      <UserManagementSection />
       <DeleteAccountSection />
     </main>
   );

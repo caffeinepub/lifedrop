@@ -270,6 +270,9 @@ function useRegisterLogic(role: Role) {
     setStatus("registering");
     setErrorMsg("");
 
+    // Set registration timestamp BEFORE backend call so notification filter works immediately
+    localStorage.setItem("lifedrop_registered_at", Date.now().toString());
+
     try {
       // Register user — pass actual email and phone to backend
       // Using device actor (unique Ed25519 keypair per browser) so each person
@@ -351,8 +354,7 @@ function useRegisterLogic(role: Role) {
         : undefined;
 
       // Only call addRegisteredUser on true first-time registration
-      // Store registration timestamp for notification filtering
-      localStorage.setItem("lifedrop_registered_at", Date.now().toString());
+      // (registration timestamp already set before backend call for notification filtering)
       localStorage.setItem(
         "lifedrop_user_role",
         typeof role === "string" ? role : (Object.keys(role)[0] ?? ""),

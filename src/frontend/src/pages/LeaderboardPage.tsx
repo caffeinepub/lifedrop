@@ -178,12 +178,14 @@ export function LeaderboardPage() {
                     border: `1.5px solid ${isTop3 ? medal.border : "oklch(var(--neon-red) / 0.3)"}`,
                   }}
                 >
-                  {donor.name.charAt(0).toUpperCase()}
+                  {bg.charAt(0)}
                 </div>
 
                 {/* Name + City */}
                 <div className="flex-1 min-w-0">
-                  <div className="font-bold truncate">{donor.name}</div>
+                  <div className="font-bold truncate text-muted-foreground">
+                    Anonymous Donor
+                  </div>
                   <div className="text-xs text-muted-foreground">
                     {donor.city}
                   </div>

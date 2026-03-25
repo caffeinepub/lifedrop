@@ -123,6 +123,24 @@ export function RegisteredUsersSidebar() {
       window.removeEventListener("lifedrop_user_registered", handler);
   }, [queryClient]);
 
+  // Determine if the viewer can see full user details
+  const viewerRole = (() => {
+    try {
+      const raw = localStorage.getItem("lifedrop_user_profile");
+      if (!raw) return "guest";
+      const parsed = JSON.parse(raw) as { role?: unknown };
+      const r = parsed.role;
+      if (typeof r === "string") return r;
+      if (r && typeof r === "object") return Object.keys(r)[0] ?? "guest";
+    } catch {
+      /* */
+    }
+    return "guest";
+  })();
+  const canViewDetails = ["hospital", "bloodBank", "ngo", "admin"].includes(
+    viewerRole,
+  );
+
   // Determine the loading/error state to show
   let listContent: React.ReactNode;
 
@@ -229,7 +247,7 @@ export function RegisteredUsersSidebar() {
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-1.5 mb-0.5">
                     <span className="text-xs font-semibold text-foreground truncate">
-                      {user.name}
+                      {canViewDetails ? user.name : "Anonymous User"}
                     </span>
                   </div>
                   <div className="flex items-center gap-1.5">
@@ -242,13 +260,13 @@ export function RegisteredUsersSidebar() {
                     >
                       {rc.label}
                     </span>
-                    {user.city && (
+                    {canViewDetails && user.city && (
                       <span className="text-xs text-muted-foreground truncate">
                         {user.city}
                       </span>
                     )}
                   </div>
-                  {displayBloodGroup && (
+                  {canViewDetails && displayBloodGroup && (
                     <div
                       className="mt-1 text-xs font-mono font-bold inline-block px-1.5 py-px rounded"
                       style={{
