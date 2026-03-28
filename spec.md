@@ -1,7 +1,9 @@
-# LIFEDROP — rishanlifedrop347
+# rishanlifedrop347 — Backend Fix
 
 ## Current State
-Full-stack blood donation platform with Motoko backend and React frontend. All features from v79 implemented including multi-role auth, blood requests, donor search, camps, notifications, leaderboard, admin dashboard, and language switching.
+The authorization `access-control.mo` has `Runtime.trap("User is not registered")` inside `getUserRole`. Any frontend call to `getCallerUserRole()` for a user who hasn't called `_initializeAccessControlWithSecret` causes the canister to trap, returning a rejection that bubbles up as "Backend temporarily unavailable" and "Setting up secure session" errors in RegisterPage and EmergencyRequestPage.
+
+Additionally, blood requests from unregistered/anonymous users may fail silently.
 
 ## Requested Changes (Diff)
 
@@ -9,11 +11,12 @@ Full-stack blood donation platform with Motoko backend and React frontend. All f
 - Nothing new
 
 ### Modify
-- Rebuild entire app to latest stable state with all fixes applied
+- `access-control.mo`: `getUserRole` — return `#guest` instead of `Runtime.trap` when user not found
+- Ensure `createBloodRequest` in `main.mo` accepts any non-anonymous caller (already done, verify)
 
 ### Remove
-- Nothing
+- `Runtime.trap("User is not registered")` from access-control.mo
 
 ## Implementation Plan
-1. Regenerate Motoko backend with all safe public functions (no traps)
-2. Rebuild frontend with all features, role-based access, animations, and mobile layout
+1. Fix `access-control.mo` — change trap to return `#guest`
+2. Verify `main.mo` has no other traps for unregistered callers
