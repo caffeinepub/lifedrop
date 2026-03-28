@@ -293,7 +293,7 @@ export function useApproveHospital() {
   return useMutation({
     mutationFn: async (hospitalId: string) => {
       if (!actor) throw new Error("Not connected");
-      const { Principal } = await import("@icp-sdk/core/principal");
+      const { Principal } = await import("@dfinity/principal");
       return actor.approveHospital(Principal.fromText(hospitalId));
     },
     onSuccess: () => {
@@ -468,6 +468,7 @@ export function useSearchDonorsPublic(
   });
 }
 
+// ─── All Users For Management ─────────────────────────────────
 export function useAllUsersForManagement() {
   const { actor, isFetching } = useDeviceActor();
   return useQuery({
@@ -475,19 +476,14 @@ export function useAllUsersForManagement() {
     queryFn: async () => {
       if (!actor) return [];
       try {
-        // Try the management-specific endpoint first, fall back to getAllUsers
-        let users: any[] = [];
-        try {
-          users = (await (actor as any).getAllUsersForManagement()) as any[];
-        } catch {
-          users = await actor.getAllUsers();
-        }
-        return users;
+        return (await (actor as any).getAllUsersForManagement()) as any[];
       } catch {
         return [];
       }
     },
     enabled: !!actor && !isFetching,
+    staleTime: 0,
+    refetchInterval: 10000,
     retry: 2,
     retryDelay: 1000,
   });
@@ -499,12 +495,16 @@ export function useAdminDeleteUser() {
   return useMutation({
     mutationFn: async (targetPrincipalText: string) => {
       if (!actor) throw new Error("Not connected");
+      if (!targetPrincipalText || targetPrincipalText === "null") {
+        throw new Error("Cannot delete: user ID not available");
+      }
       try {
-        const { Principal } = await import("@icp-sdk/core/principal");
+        const { Principal } = await import("@dfinity/principal");
         const result = (await (actor as any).adminDeleteUser(
           Principal.fromText(targetPrincipalText),
         )) as boolean;
-        if (!result) throw new Error("Delete failed");
+        if (!result)
+          throw new Error("Delete failed — you may not have permission");
         return result;
       } catch (e: any) {
         throw new Error(e?.message || "Failed to delete user");

@@ -110,9 +110,18 @@ export const PublicUserEntry = IDL.Record({
   'role' : Role,
   'bloodGroup' : IDL.Opt(BloodGroup),
 });
+export const AdminUserEntry = IDL.Record({
+  'id' : IDL.Principal,
+  'name' : IDL.Text,
+  'role' : Role,
+  'city' : IDL.Text,
+  'bloodGroup' : IDL.Opt(BloodGroup),
+  'createdAt' : IDL.Int,
+});
 
 export const idlService = IDL.Service({
   '_initializeAccessControlWithSecret' : IDL.Func([IDL.Text], [], []),
+  'adminDeleteUser' : IDL.Func([IDL.Principal], [IDL.Bool], []),
   'approveHospital' : IDL.Func([IDL.Principal], [IDL.Bool], []),
   'assignCallerUserRole' : IDL.Func([IDL.Principal, UserRole], [], []),
   'createBloodRequest' : IDL.Func(
@@ -135,6 +144,7 @@ export const idlService = IDL.Service({
   'getAllDonorsList' : IDL.Func([], [IDL.Vec(DonorPublicInfo)], ['query']),
   'getAllHospitals' : IDL.Func([], [IDL.Vec(HospitalProfile)], ['query']),
   'getAllUsers' : IDL.Func([], [IDL.Vec(User)], ['query']),
+  'getAllUsersForManagement' : IDL.Func([], [IDL.Vec(AdminUserEntry)], ['query']),
   'getBloodRequests' : IDL.Func([], [IDL.Vec(BloodRequest)], ['query']),
   'getCallerDonorProfile' : IDL.Func([], [IDL.Opt(DonorProfile)], ['query']),
   'getCallerUserProfile' : IDL.Func([], [IDL.Opt(UserProfile)], ['query']),
@@ -284,9 +294,18 @@ export const idlFactory = ({ IDL }) => {
     'role' : Role,
     'bloodGroup' : IDL.Opt(BloodGroup),
   });
+  const AdminUserEntry = IDL.Record({
+    'id' : IDL.Principal,
+    'name' : IDL.Text,
+    'role' : Role,
+    'city' : IDL.Text,
+    'bloodGroup' : IDL.Opt(BloodGroup),
+    'createdAt' : IDL.Int,
+  });
   
   return IDL.Service({
     '_initializeAccessControlWithSecret' : IDL.Func([IDL.Text], [], []),
+    'adminDeleteUser' : IDL.Func([IDL.Principal], [IDL.Bool], []),
     'approveHospital' : IDL.Func([IDL.Principal], [IDL.Bool], []),
     'assignCallerUserRole' : IDL.Func([IDL.Principal, UserRole], [], []),
     'createBloodRequest' : IDL.Func(
@@ -309,6 +328,7 @@ export const idlFactory = ({ IDL }) => {
     'getAllDonorsList' : IDL.Func([], [IDL.Vec(DonorPublicInfo)], ['query']),
     'getAllHospitals' : IDL.Func([], [IDL.Vec(HospitalProfile)], ['query']),
     'getAllUsers' : IDL.Func([], [IDL.Vec(User)], ['query']),
+    'getAllUsersForManagement' : IDL.Func([], [IDL.Vec(AdminUserEntry)], ['query']),
     'getBloodRequests' : IDL.Func([], [IDL.Vec(BloodRequest)], ['query']),
     'getCallerDonorProfile' : IDL.Func([], [IDL.Opt(DonorProfile)], ['query']),
     'getCallerUserProfile' : IDL.Func([], [IDL.Opt(UserProfile)], ['query']),

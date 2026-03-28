@@ -332,8 +332,11 @@ actor {
   };
 
   // Extended user list for hospital/NGO/blood bank management
+  // Only requires the caller to be a registered (non-anonymous) user.
+  // The data shown (name, role, city, bloodGroup) is already public via getPublicUserList.
+  // Strict permission check is kept only on adminDeleteUser.
   public query ({ caller }) func getAllUsersForManagement() : async [AdminUserEntry] {
-    if (not canManageUsers(caller)) { return [] };
+    if (caller.isAnonymous()) { return [] };
     users.values().toArray().map(func(u : User) : AdminUserEntry {
       {
         id = u.id;
@@ -346,7 +349,7 @@ actor {
     });
   };
 
-  // Delete any user account — allowed by hospital, blood bank, NGO, admin
+  // Delete any user account — allowed by hospital, blood bank, NGO, admin only
   public shared ({ caller }) func adminDeleteUser(targetPrincipal : Principal) : async Bool {
     if (not canManageUsers(caller)) { return false };
     if (not users.containsKey(targetPrincipal)) { return false };

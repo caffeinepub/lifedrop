@@ -9,7 +9,6 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Loader2, Trash2, Users } from "lucide-react";
 import { toast } from "sonner";
@@ -56,6 +55,15 @@ function roleColor(role: unknown): string {
   return map[key] ?? "bg-gray-900/40 text-gray-300 border-gray-700/40";
 }
 
+function getPrincipalText(id: unknown): string {
+  if (id == null) return "";
+  if (typeof id === "object" && id !== null && "toText" in id) {
+    return (id as { toText: () => string }).toText();
+  }
+  const s = String(id);
+  return s === "null" ? "" : s;
+}
+
 export function UserManagementSection() {
   const { data: users = [], isLoading } = useAllUsersForManagement();
   const deleteUser = useAdminDeleteUser();
@@ -64,8 +72,10 @@ export function UserManagementSection() {
     try {
       await deleteUser.mutateAsync(principalText);
       toast.success(`${name}'s account has been deleted.`);
-    } catch {
-      toast.error("Failed to delete account. Please try again.");
+    } catch (err: any) {
+      toast.error(
+        err?.message || "Failed to delete account. Please try again.",
+      );
     }
   };
 
@@ -92,9 +102,21 @@ export function UserManagementSection() {
         <div>
           <h3 className="text-lg font-bold text-foreground">User Management</h3>
           <p className="text-xs text-muted-foreground">
-            Delete any user account from the platform
+            View and delete user accounts from the platform
           </p>
         </div>
+        {!isLoading && users.length > 0 && (
+          <span
+            className="ml-auto text-xs px-2.5 py-1 rounded-full font-semibold"
+            style={{
+              background: "oklch(var(--neon-red) / 0.15)",
+              color: "oklch(var(--neon-red))",
+              border: "1px solid oklch(var(--neon-red) / 0.3)",
+            }}
+          >
+            {users.length} users
+          </span>
+        )}
       </div>
 
       {isLoading ? (
@@ -113,18 +135,16 @@ export function UserManagementSection() {
           className="text-center py-10 text-muted-foreground text-sm"
           data-ocid="user_management.empty_state"
         >
-          No users found.
+          No registered users found.
         </div>
       ) : (
         <div className="space-y-2" data-ocid="user_management.list">
-          {users.map((user: any, idx: number) => {
-            const principalText =
-              typeof user.id === "object" && "toText" in user.id
-                ? user.id.toText()
-                : String(user.id);
+          {(users as any[]).map((user: any, idx: number) => {
+            const principalText = getPrincipalText(user.id);
+            const canDelete = !!principalText;
             return (
               <div
-                key={principalText}
+                key={principalText || `user-${idx}`}
                 className="flex items-center gap-3 rounded-xl px-4 py-3"
                 style={{
                   background: "oklch(0.15 0.005 20 / 0.6)",
@@ -155,6 +175,12 @@ export function UserManagementSection() {
                       size="sm"
                       variant="destructive"
                       className="gap-1.5 text-xs"
+                      disabled={!canDelete}
+                      title={
+                        !canDelete
+                          ? "User ID unavailable — cannot delete"
+                          : undefined
+                      }
                       data-ocid={`user_management.delete_button.${idx + 1}`}
                     >
                       <Trash2 className="w-3.5 h-3.5" />

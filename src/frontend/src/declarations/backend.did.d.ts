@@ -104,8 +104,17 @@ export interface UserProfile {
 export type UserRole = { 'admin' : null } |
   { 'user' : null } |
   { 'guest' : null };
+export interface AdminUserEntry {
+  'id' : Principal,
+  'name' : string,
+  'role' : Role,
+  'city' : string,
+  'bloodGroup' : [] | [BloodGroup],
+  'createdAt' : bigint,
+}
 export interface _SERVICE {
   '_initializeAccessControlWithSecret' : ActorMethod<[string], undefined>,
+  'adminDeleteUser' : ActorMethod<[Principal], boolean>,
   'approveHospital' : ActorMethod<[Principal], boolean>,
   'assignCallerUserRole' : ActorMethod<[Principal, UserRole], undefined>,
   'createBloodRequest' : ActorMethod<
@@ -119,6 +128,7 @@ export interface _SERVICE {
   'getAllDonorsList' : ActorMethod<[], Array<DonorPublicInfo>>,
   'getAllHospitals' : ActorMethod<[], Array<HospitalProfile>>,
   'getAllUsers' : ActorMethod<[], Array<User>>,
+  'getAllUsersForManagement' : ActorMethod<[], Array<AdminUserEntry>>,
   'getBloodRequests' : ActorMethod<[], Array<BloodRequest>>,
   'getCallerDonorProfile' : ActorMethod<[], [] | [DonorProfile]>,
   'getCallerUserProfile' : ActorMethod<[], [] | [UserProfile]>,
