@@ -1,5 +1,6 @@
 import Map "mo:core/Map";
 import Principal "mo:core/Principal";
+import Runtime "mo:core/Runtime";
 
 module {
   public type UserRole = {
@@ -36,18 +37,20 @@ module {
     };
   };
 
-  // Returns #guest instead of trapping for unknown principals
   public func getUserRole(state : AccessControlState, caller : Principal) : UserRole {
     if (caller.isAnonymous()) { return #guest };
     switch (state.userRoles.get(caller)) {
       case (?role) { role };
-      case (null) { #guest }; // Safe default — never trap
+      case (null) {
+        Runtime.trap("User is not registered");
+      };
     };
   };
 
   public func assignRole(state : AccessControlState, caller : Principal, user : Principal, role : UserRole) {
-    // Silently ignore if caller is not admin — never trap
-    if (not (isAdmin(state, caller))) { return };
+    if (not (isAdmin(state, caller))) {
+      Runtime.trap("Unauthorized: Only admins can assign user roles");
+    };
     state.userRoles.add(user, role);
   };
 

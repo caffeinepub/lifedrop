@@ -10,12 +10,10 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
-import { Loader2, Trash2, Users } from "lucide-react";
+import { Loader2, RefreshCw, Trash2, Users } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
-import {
-  useAdminDeleteUser,
-  useAllUsersForManagement,
-} from "../hooks/useQueries";
+import { useDeviceActor } from "../hooks/useDeviceActor";
 
 function normalizeRoleLabel(role: unknown): string {
   if (typeof role === "string") return role;
@@ -57,25 +55,72 @@ function roleColor(role: unknown): string {
 
 function getPrincipalText(id: unknown): string {
   if (id == null) return "";
-  if (typeof id === "object" && id !== null && "toText" in id) {
-    return (id as { toText: () => string }).toText();
+  if (typeof id === "object" && id !== null) {
+    if ("toText" in id && typeof (id as any).toText === "function") {
+      try {
+        return (id as any).toText();
+      } catch {
+        /* fall through */
+      }
+    }
   }
   const s = String(id);
-  return s === "null" ? "" : s;
+  return s === "null" || s === "undefined" ? "" : s;
 }
 
 export function UserManagementSection() {
-  const { data: users = [], isLoading } = useAllUsersForManagement();
-  const deleteUser = useAdminDeleteUser();
+  const { actor } = useDeviceActor();
+  const [users, setUsers] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [deleting, setDeleting] = useState<string | null>(null);
+
+  const fetchUsers = useCallback(async () => {
+    if (!actor) return;
+    setLoading(true);
+    try {
+      const result = await (actor as any).getAllUsersForManagement();
+      setUsers(Array.isArray(result) ? result : []);
+    } catch (err) {
+      console.error("Failed to load users", err);
+      setUsers([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [actor]);
+
+  useEffect(() => {
+    if (actor) {
+      fetchUsers();
+    }
+  }, [actor, fetchUsers]);
 
   const handleDelete = async (principalText: string, name: string) => {
+    if (!actor || !principalText) {
+      toast.error("Cannot delete: user ID not available");
+      return;
+    }
+    setDeleting(principalText);
     try {
-      await deleteUser.mutateAsync(principalText);
-      toast.success(`${name}'s account has been deleted.`);
+      const { Principal } = await import("@dfinity/principal");
+      const result = await (actor as any).adminDeleteUser(
+        Principal.fromText(principalText),
+      );
+      if (result) {
+        toast.success(`${name}'s account has been deleted.`);
+        setUsers((prev) =>
+          prev.filter((u) => getPrincipalText(u.id) !== principalText),
+        );
+      } else {
+        toast.error(
+          "Delete failed — you may not have permission for this action.",
+        );
+      }
     } catch (err: any) {
       toast.error(
         err?.message || "Failed to delete account. Please try again.",
       );
+    } finally {
+      setDeleting(null);
     }
   };
 
@@ -102,24 +147,39 @@ export function UserManagementSection() {
         <div>
           <h3 className="text-lg font-bold text-foreground">User Management</h3>
           <p className="text-xs text-muted-foreground">
-            View and delete user accounts from the platform
+            View and delete registered user accounts
           </p>
         </div>
-        {!isLoading && users.length > 0 && (
-          <span
-            className="ml-auto text-xs px-2.5 py-1 rounded-full font-semibold"
-            style={{
-              background: "oklch(var(--neon-red) / 0.15)",
-              color: "oklch(var(--neon-red))",
-              border: "1px solid oklch(var(--neon-red) / 0.3)",
-            }}
+        <div className="ml-auto flex items-center gap-2">
+          {!loading && users.length > 0 && (
+            <span
+              className="text-xs px-2.5 py-1 rounded-full font-semibold"
+              style={{
+                background: "oklch(var(--neon-red) / 0.15)",
+                color: "oklch(var(--neon-red))",
+                border: "1px solid oklch(var(--neon-red) / 0.3)",
+              }}
+            >
+              {users.length} users
+            </span>
+          )}
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={fetchUsers}
+            disabled={loading || !actor}
+            className="gap-1.5 text-xs"
+            data-ocid="user_management.refresh_button"
           >
-            {users.length} users
-          </span>
-        )}
+            <RefreshCw
+              className={`w-3.5 h-3.5 ${loading ? "animate-spin" : ""}`}
+            />
+            {loading ? "Loading..." : "Refresh"}
+          </Button>
+        </div>
       </div>
 
-      {isLoading ? (
+      {loading && users.length === 0 ? (
         <div
           className="flex items-center justify-center py-10 gap-3"
           data-ocid="user_management.loading_state"
@@ -130,18 +190,33 @@ export function UserManagementSection() {
           />
           <span className="text-sm text-muted-foreground">Loading users…</span>
         </div>
+      ) : !actor ? (
+        <div
+          className="text-center py-8 text-muted-foreground text-sm"
+          data-ocid="user_management.no_actor_state"
+        >
+          Connecting to backend…
+        </div>
       ) : users.length === 0 ? (
         <div
-          className="text-center py-10 text-muted-foreground text-sm"
+          className="text-center py-8 text-muted-foreground text-sm"
           data-ocid="user_management.empty_state"
         >
-          No registered users found.
+          No registered users found.{" "}
+          <button
+            type="button"
+            onClick={fetchUsers}
+            className="underline"
+            style={{ color: "oklch(var(--neon-red))" }}
+          >
+            Click here to reload
+          </button>
         </div>
       ) : (
         <div className="space-y-2" data-ocid="user_management.list">
-          {(users as any[]).map((user: any, idx: number) => {
+          {users.map((user: any, idx: number) => {
             const principalText = getPrincipalText(user.id);
-            const canDelete = !!principalText;
+            const isDeleting = deleting === principalText;
             return (
               <div
                 key={principalText || `user-${idx}`}
@@ -149,12 +224,14 @@ export function UserManagementSection() {
                 style={{
                   background: "oklch(0.15 0.005 20 / 0.6)",
                   border: "1px solid oklch(var(--border) / 0.4)",
+                  opacity: isDeleting ? 0.5 : 1,
+                  transition: "opacity 0.2s",
                 }}
                 data-ocid={`user_management.item.${idx + 1}`}
               >
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold text-foreground truncate">
-                    {user.name}
+                    {user.name || "Unnamed User"}
                   </p>
                   <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                     <span
@@ -175,15 +252,14 @@ export function UserManagementSection() {
                       size="sm"
                       variant="destructive"
                       className="gap-1.5 text-xs"
-                      disabled={!canDelete}
-                      title={
-                        !canDelete
-                          ? "User ID unavailable — cannot delete"
-                          : undefined
-                      }
+                      disabled={isDeleting || !principalText}
                       data-ocid={`user_management.delete_button.${idx + 1}`}
                     >
-                      <Trash2 className="w-3.5 h-3.5" />
+                      {isDeleting ? (
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      ) : (
+                        <Trash2 className="w-3.5 h-3.5" />
+                      )}
                       Delete
                     </Button>
                   </AlertDialogTrigger>
@@ -199,10 +275,9 @@ export function UserManagementSection() {
                         Delete {user.name}&apos;s Account
                       </AlertDialogTitle>
                       <AlertDialogDescription>
-                        Are you sure you want to delete{" "}
-                        <strong>{user.name}</strong>&apos;s account? This action
-                        cannot be undone and will permanently remove all their
-                        data.
+                        Are you sure you want to permanently delete{" "}
+                        <strong>{user.name}</strong>&apos;s account? This cannot
+                        be undone.
                       </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
@@ -214,9 +289,6 @@ export function UserManagementSection() {
                         className="bg-red-600 hover:bg-red-700"
                         data-ocid="user_management.confirm_button"
                       >
-                        {deleteUser.isPending ? (
-                          <Loader2 className="w-4 h-4 animate-spin mr-1" />
-                        ) : null}
                         Yes, Delete Account
                       </AlertDialogAction>
                     </AlertDialogFooter>
